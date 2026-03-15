@@ -10,6 +10,9 @@ backend/.env
 backend/.venv/
 backend/__pycache__/
 backend/app/__pycache__/
+backend/tests/__pycache__/
+backend/*.log
+backend/*.db
 infra/nginx/logs/*.log
 infra/nginx/logs/*.pid
 infra/nginx/dist/
@@ -19,3 +22,4 @@ frontend-build.out.log
 frontend-build.err.log
 next.out.log
 next.err.log
+backend/pythonw_test.py
