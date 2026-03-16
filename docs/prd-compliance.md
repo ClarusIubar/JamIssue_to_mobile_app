@@ -6,8 +6,8 @@
 이 문서는 현재 저장소 기준으로 무엇이 구현되었고, 무엇이 부분 구현이며, 무엇이 아직 비어 있는지 PRD 축으로 빠르게 확인하기 위한 체크 문서다.
 
 관련 문서:
+- 문서 가이드: [docs/README.md](D:/Code305/JamIssue/docs/README.md)
 - 화면설계서: [docs/screen-spec.md](D:/Code305/JamIssue/docs/screen-spec.md)
-- 다음 작업 보고서: [docs/next-work-report.md](D:/Code305/JamIssue/docs/next-work-report.md)
 - 계정/삭제 규칙: [docs/account-identity-schema.md](D:/Code305/JamIssue/docs/account-identity-schema.md)
 
 ## 1. 비전과 타깃 적합성
@@ -44,7 +44,7 @@
 - [x] 위치 반경 120m 제한
 - [x] 반경 밖 비활성 UX
 - [x] 중복 적립 방지
-- [ ] 스탬프와 후기 작성 권한 정책 연결
+- [x] 스탬프와 후기 작성 권한 정책 연결
 
 ### 3-3. 후기/댓글
 - [x] 장소별 후기 작성
@@ -62,10 +62,16 @@
 - [ ] 카카오 OAuth 실구현
 
 ### 3-5. 사용자 경로 생태계
+- [x] PRD 문장 반영: `사용자가 실제 방문한 스탬프 기반 동선을 공개 경로로 발행하고, 다른 사용자는 좋아요순/최신순으로 그 경로를 탐색할 수 있어야 한다.`
 - [x] 스탬프 기반 사용자 경로 생성
 - [x] 좋아요순 / 최신순 정렬
 - [x] 좋아요 테이블 분리
 - [ ] 경로 신고 / 품질 제어
+
+현재 규칙:
+- 공개 경로는 스탬프를 찍은 장소만 가능
+- 최소 2곳 이상이 필요
+- 운영자 추천 코스는 초기 seed 성격이고, 추천 레이어의 핵심은 사용자 생성 경로
 
 판정: 부분 준수
 

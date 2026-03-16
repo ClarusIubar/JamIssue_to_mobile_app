@@ -25,6 +25,22 @@
 - 스탬프 적립
 - 사용자 생성 추천 경로
 - 네이버 로그인 중심 계정 구조
+
+## 사용자 생성 경로 원칙
+
+이 프로젝트의 추천 경로는 운영자가 임의로 조합한 코스를 늘리는 방식보다,
+사용자가 실제로 찍은 스탬프 동선을 공개하고 다른 사용자가 다시 소비하는 구조를 우선한다.
+
+PRD 반영 문장:
+
+`사용자가 실제 방문한 스탬프 기반 동선을 공개 경로로 발행하고, 다른 사용자는 좋아요순/최신순으로 그 경로를 탐색할 수 있어야 한다.`
+
+현재 적용 규칙:
+
+- 경로 공개는 실제로 스탬프를 찍은 장소만 가능
+- 최소 2곳 이상을 묶어야 공개 경로가 됨
+- 목록 정렬은 `좋아요순(popular)` 과 `최신순(latest)` 제공
+- 운영자 추천 코스는 초기 큐레이션 용도이고, 중장기 핵심은 사용자 생성 경로
 - 내부 계정 `user_id` 와 외부 로그인 `user_identity` 분리
 
 ## 현재 브랜치의 아키텍처
@@ -255,6 +271,7 @@ cd D:/Code305/JamIssue/backend
 
 ## 관련 문서
 
+- [문서 가이드](/D:/Code305/JamIssue/docs/README.md)
 - [Worker-first POC 문서](/D:/Code305/JamIssue/docs/worker-first-poc.md)
 - [growgardens 배포 런북](/D:/Code305/JamIssue/docs/growgardens-deploy-runbook.md)
 - [계정/삭제 규칙](/D:/Code305/JamIssue/docs/account-identity-schema.md)

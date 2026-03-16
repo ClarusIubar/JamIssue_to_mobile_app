@@ -16,7 +16,7 @@ Cloudflare Pages
 ```
 
 현재 POC는 읽기 API만 보는 상태를 넘어서,
-네이버 로그인과 후기 / 댓글 / 좋아요 / 스탬프 / 추천 경로 쓰기 일부까지 Worker가 직접 처리한다.
+네이버 로그인과 후기 / 댓글 / 좋아요 / 스탬프 / 추천 경로 쓰기까지 Worker가 직접 처리한다.
 관리자 기능과 카카오 로그인처럼 아직 옮기지 않은 경로만 선택적으로 FastAPI origin으로 넘길 수 있다.
 
 ## 현재 Worker가 직접 처리하는 엔드포인트
@@ -50,6 +50,8 @@ Cloudflare Pages
   - 네이버 provider 활성 상태 확인 가능
 - `https://api.jamissue.growgardens.app/api/bootstrap`
   - Supabase 장소 / 후기 / 코스 실제 응답
+- `https://api.jamissue.growgardens.app/api/reviews`
+  - 후기 조회 정상 응답
 - `POST /api/reviews`
   - 로그인 없으면 `401`
   - 좌표가 반경 밖이면 `403`
@@ -71,11 +73,11 @@ Cloudflare Pages
 2. 비어 있으면 `501`
 
 즉, 이 브랜치는 읽기 전용 shell이 아니라,
-사용자 핵심 흐름 일부를 Worker에서 직접 검증하는 실험 브랜치다.
+사용자 핵심 흐름 대부분을 Worker에서 직접 검증하는 실험 브랜치다.
 
 ## 장점
 
-- Worker 무료 플랜에서도 실제 데이터 읽기와 일부 쓰기 API를 확인할 수 있다.
+- Worker 무료 플랜에서도 실제 데이터 읽기와 핵심 쓰기 API를 확인할 수 있다.
 - 프론트가 더 이상 shell 응답이 아니라 실제 장소 / 후기 / 경로 데이터를 받을 수 있다.
 - 네이버 로그인 시작 / callback / 세션 확인까지 Worker에서 직접 확인할 수 있다.
 - 후기와 스탬프를 같은 반경 규칙으로 묶어 UX를 단순화할 수 있다.
