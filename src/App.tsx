@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   claimStamp,
   createComment,
@@ -179,15 +179,13 @@ export default function App() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const filteredPlaces = useMemo(() => filterPlacesByCategory(places, activeCategory), [places, activeCategory]);
-  const selectedPlace = useMemo(
-    () =>
-      filteredPlaces.find((place) => place.id === selectedPlaceId) ??
-      places.find((place) => place.id === selectedPlaceId) ??
-      filteredPlaces[0] ??
-      places[0] ??
-      null,
-    [filteredPlaces, places, selectedPlaceId],
-  );
+  const selectedPlace = useMemo(() => {
+    if (!selectedPlaceId) {
+      return null;
+    }
+
+    return places.find((place) => place.id === selectedPlaceId) ?? null;
+  }, [places, selectedPlaceId]);
   const selectedPlaceReviews = selectedPlace ? reviews.filter((review) => review.placeId === selectedPlace.id) : [];
   const todayStamp = selectedPlace ? getTodayStampLog(stampState.logs, selectedPlace.id) : null;
   const latestStamp = selectedPlace ? getLatestPlaceStamp(stampState.logs, selectedPlace.id) : null;
@@ -227,10 +225,16 @@ export default function App() {
   }, [notice]);
 
   useEffect(() => {
-    if (!selectedPlace && filteredPlaces[0]) {
-      setSelectedPlaceId(filteredPlaces[0].id);
+    if (!selectedPlaceId) {
+      return;
     }
-  }, [filteredPlaces, selectedPlace]);
+
+    const isVisibleInCurrentCategory = filteredPlaces.some((place) => place.id === selectedPlaceId);
+    if (!isVisibleInCurrentCategory) {
+      setDrawerState('closed');
+      setSelectedPlaceId(null);
+    }
+  }, [filteredPlaces, selectedPlaceId]);
 
   useEffect(() => {
     if (!selectedPlace) {
@@ -285,7 +289,7 @@ export default function App() {
       setCommunityRoutes(routes);
       setSessionUser(auth.user);
       setProviders(auth.providers);
-      setSelectedPlaceId((current) => current ?? bootstrap.places[0]?.id ?? null);
+      setSelectedPlaceId((current) => (current && bootstrap.places.some((place) => place.id === current) ? current : null));
 
       if (auth.user) {
         setMyPage(await getMySummary());
@@ -658,6 +662,7 @@ export default function App() {
             setActiveTab(nextTab);
             if (nextTab !== 'map') {
               setDrawerState('closed');
+              setSelectedPlaceId(null);
             }
           }}
         />
