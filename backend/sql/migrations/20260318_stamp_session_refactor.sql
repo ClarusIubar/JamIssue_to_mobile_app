@@ -61,19 +61,15 @@ alter table public.feed
   add column if not exists stamp_id integer references public.user_stamp(stamp_id);
 
 update public.feed f
-set stamp_id = candidate.stamp_id
-from lateral (
+set stamp_id = (
   select us.stamp_id
   from public.user_stamp us
   where us.user_id = f.user_id
     and us.position_id = f.position_id
   order by us.created_at desc, us.stamp_id desc
   limit 1
-) as candidate
+)
 where f.stamp_id is null;
-
-alter table public.feed
-  alter column stamp_id set not null;
 
 alter table public.feed
   alter column badge set default 'Local memo';
