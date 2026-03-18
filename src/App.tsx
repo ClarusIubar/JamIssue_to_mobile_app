@@ -567,11 +567,7 @@ export default function App() {
             <header className="map-stage__header">
               <div className="map-stage__brand">
                 <p className="eyebrow">DAEJEON JAM ISSUE</p>
-                <p className="map-stage__headline">꽃처럼 찍힌 장소를 눌러 드로워에서 바로 이어가세요.</p>
-              </div>
-              <div className="map-stage__summary">
-                <span className="counter-pill">장소 {selectedCategoryCount}곳</span>
-                <span className="counter-pill counter-pill--festival">행사 {festivals.length}개</span>
+                <p className="map-stage__headline">꽃 마커로 장소와 축제를 가볍게 고르세요.</p>
               </div>
             </header>
 
@@ -606,6 +602,12 @@ export default function App() {
                     </button>
                   );
                 })}
+              </div>
+              <div className="map-filter-strip__meta">
+                <span className="counter-pill">장소 {selectedCategoryCount}곳</span>
+                <span className={festivals.length > 0 ? 'counter-pill counter-pill--festival' : 'counter-pill counter-pill--muted'}>
+                  {festivals.length > 0 ? `행사 ${festivals.length}개` : '행사 예정 없음'}
+                </span>
               </div>
             </div>
 
@@ -728,6 +730,8 @@ export default function App() {
     </div>
   );
 }
+
+
 
 
 
