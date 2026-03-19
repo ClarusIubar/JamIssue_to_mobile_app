@@ -1,10 +1,9 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   claimStamp,
   createComment,
   createReview,
   createUserRoute,
-  getAuthSession,
   getBootstrap,
   getCommunityRoutes,
   getFestivals,
@@ -241,6 +240,39 @@ export default function App() {
   }, [activeTab, myPage, sessionUser]);
 
   useEffect(() => {
+    if (activeTab !== 'course') {
+      return;
+    }
+
+    const cached = communityRoutesCacheRef.current[communityRouteSort];
+    if (cached) {
+      setCommunityRoutes(cached);
+      return;
+    }
+
+    void fetchCommunityRoutes(communityRouteSort, true).catch((error) => {
+      setNotice(formatErrorMessage(error));
+    });
+  }, [activeTab, communityRouteSort]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (communityRoutesCacheRef.current[communityRouteSort]) {
+      return;
+    }
+
+    const run = () => {
+      void fetchCommunityRoutes(communityRouteSort, true).catch(() => {});
+    };
+
+    const timeout = window.setTimeout(run, 180);
+    return () => window.clearTimeout(timeout);
+  }, [communityRouteSort]);
+
+  useEffect(() => {
     if (activeTab !== 'feed' && activeCommentReviewId !== null) {
       setActiveCommentReviewId(null);
       setHighlightedCommentId(null);
@@ -305,10 +337,8 @@ export default function App() {
     setBootstrapError(null);
 
     try {
-      const [bootstrap, auth, routes, festivalResult] = await Promise.all([
+      const [bootstrap, festivalResult] = await Promise.all([
         getBootstrap(),
-        getAuthSession(),
-        fetchCommunityRoutes(communityRouteSort, true),
         getFestivals().catch(() => [] as FestivalItem[]),
       ]);
 
@@ -318,22 +348,21 @@ export default function App() {
       setCourses(bootstrap.courses);
       setStampState(bootstrap.stamps);
       setHasRealData(bootstrap.hasRealData);
-      replaceCommunityRoutes(routes, communityRouteSort);
-      setSessionUser(auth.user);
-      setProviders(auth.providers);
+      setSessionUser(bootstrap.auth.user);
+      setProviders(bootstrap.auth.providers);
       setSelectedPlaceId((current) => (current && bootstrap.places.some((place) => place.id === current) ? current : null));
       setSelectedFestivalId((current) => (current && festivalResult.some((festival) => festival.id === current) ? current : null));
 
-      if (auth.user) {
+      if (bootstrap.auth.user) {
         if (activeTab === 'my') {
-          await refreshMyPageForUser(auth.user, true);
+          await refreshMyPageForUser(bootstrap.auth.user, true);
         }
       } else {
         setMyPage(null);
       }
 
       setBootstrapStatus('ready');
-      if (authState === 'naver-success' && auth.user?.profileCompletedAt === null) {
+      if (authState === 'naver-success' && bootstrap.auth.user?.profileCompletedAt === null) {
         goToTab('my');
         setNotice('닉네임을 먼저 저장하면 바로 피드와 코스로 이어갈 수 있어요.');
       }
@@ -761,11 +790,3 @@ export default function App() {
     </div>
   );
 }
-
-
-
-
-
-
-
-

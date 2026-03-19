@@ -18,6 +18,10 @@ const NAVER_AUTHORIZE_URL = 'https://nid.naver.com/oauth2.0/authorize';
 const NAVER_TOKEN_URL = 'https://nid.naver.com/oauth2.0/token';
 const NAVER_PROFILE_URL = 'https://openapi.naver.com/v1/nid/me';
 const textEncoder = new TextEncoder();
+const STATIC_BASE_CACHE_TTL_MS = 5 * 60 * 1000;
+const FESTIVALS_CACHE_TTL_MS = 10 * 60 * 1000;
+let staticBaseCache = { expiresAt: 0, value: null, pending: null };
+let festivalsCache = { expiresAt: 0, syncAt: 0, value: null, pending: null };
 
 function jsonResponse(status, payload, env, request, extraHeaders = {}) {
   const headers = new Headers({
@@ -123,6 +127,16 @@ function buildInFilter(values) {
     return null;
   }
   return `in.(${unique.map((value) => encodeFilterValue(value)).join(',')})`;
+}
+
+async function rememberPending(cacheState, loader) {
+  if (cacheState.pending) {
+    return cacheState.pending;
+  }
+  cacheState.pending = loader().finally(() => {
+    cacheState.pending = null;
+  });
+  return cacheState.pending;
 }
 
 function formatDateTime(value) {
@@ -628,6 +642,7 @@ function mapPlace(row) {
     category: normalizePlaceCategory(row.category, row.slug),
     jamColor: getCategoryPalette(normalizePlaceCategory(row.category, row.slug), row).jamColor,
     accentColor: getCategoryPalette(normalizePlaceCategory(row.category, row.slug), row).accentColor,
+    imageUrl: row.image_url ?? null,
     latitude: row.latitude,
     longitude: row.longitude,
     summary: row.summary,
@@ -638,6 +653,29 @@ function mapPlace(row) {
     stampReward: row.stamp_reward,
     heroLabel: getCategoryPalette(normalizePlaceCategory(row.category, row.slug), row).heroLabel,
   };
+}
+
+async function loadStaticBaseRows(env) {
+  const now = Date.now();
+  if (staticBaseCache.value && staticBaseCache.expiresAt > now) {
+    return staticBaseCache.value;
+  }
+
+  return rememberPending(staticBaseCache, async () => {
+    const [placeRows, courseRows, coursePlaceRows] = await Promise.all([
+      supabaseRequest(env, "map?select=position_id,slug,name,district,category,latitude,longitude,summary,description,image_url,vibe_tags,visit_time,route_hint,stamp_reward,hero_label,jam_color,accent_color,is_active&is_active=eq.true&order=position_id.asc"),
+      supabaseRequest(env, "course?select=course_id,title,mood,duration,note,color,display_order&order=display_order.asc"),
+      supabaseRequest(env, "course_place?select=course_id,position_id,stop_order&order=stop_order.asc"),
+    ]);
+    const value = { placeRows, courseRows, coursePlaceRows };
+    staticBaseCache = {
+      ...staticBaseCache,
+      value,
+      expiresAt: Date.now() + STATIC_BASE_CACHE_TTL_MS,
+      pending: null,
+    };
+    return value;
+  });
 }
 
 function countComments(comments) {
@@ -813,10 +851,8 @@ function mapCommunityRoutes(routeRows, routePlaceRows, usersById, placesByPositi
   });
 }
 async function loadBaseData(env, sessionUserId = null) {
-  const [placeRows, courseRows, coursePlaceRows, feedRows] = await Promise.all([
-    supabaseRequest(env, "map?select=position_id,slug,name,district,category,latitude,longitude,summary,description,vibe_tags,visit_time,route_hint,stamp_reward,hero_label,jam_color,accent_color,is_active&is_active=eq.true&order=position_id.asc"),
-    supabaseRequest(env, "course?select=course_id,title,mood,duration,note,color,display_order&order=display_order.asc"),
-    supabaseRequest(env, "course_place?select=course_id,position_id,stop_order&order=stop_order.asc"),
+  const [{ placeRows, courseRows, coursePlaceRows }, feedRows] = await Promise.all([
+    loadStaticBaseRows(env),
     supabaseRequest(env, "feed?select=feed_id,position_id,user_id,stamp_id,body,mood,badge,image_url,created_at&order=created_at.desc"),
   ]);
 
@@ -895,18 +931,20 @@ async function loadCommunityRoutes(env, options = {}) {
       : Promise.resolve([]),
   ]);
 
-  const positionIdsFilter = buildInFilter(routePlaceRows.map((row) => row.position_id));
   const userIdsFilter = buildInFilter(routeRows.map((row) => row.user_id));
-  const [placeRows, userRows] = await Promise.all([
-    positionIdsFilter
-      ? supabaseRequest(env, `map?select=position_id,slug,name&is_active=eq.true&position_id=${positionIdsFilter}`)
-      : Promise.resolve([]),
+  const [{ placeRows }, userRows] = await Promise.all([
+    loadStaticBaseRows(env),
     userIdsFilter
       ? supabaseRequest(env, `user?select=user_id,nickname&user_id=${userIdsFilter}`)
       : Promise.resolve([]),
   ]);
 
-  const placesByPositionId = new Map(placeRows.map((row) => [String(row.position_id), { id: row.slug, name: row.name }]));
+  const neededPositionIds = new Set(routePlaceRows.map((row) => String(row.position_id)));
+  const placesByPositionId = new Map(
+    placeRows
+      .filter((row) => neededPositionIds.has(String(row.position_id)))
+      .map((row) => [String(row.position_id), { id: row.slug, name: row.name }]),
+  );
   const usersById = new Map(userRows.map((row) => [row.user_id, row]));
   const likedRouteIds = new Set(userRouteLikeRows.map((row) => String(row.route_id)));
   return mapCommunityRoutes(routeRows, routePlaceRows, usersById, placesByPositionId, likedRouteIds);
@@ -1050,6 +1088,7 @@ async function handleBootstrap(request, env) {
   const sessionUser = await readSessionUser(request, env);
   const baseData = await loadBaseData(env, sessionUser?.id ?? null);
   return jsonResponse(200, {
+    auth: createAuthResponse(sessionUser, env),
     places: baseData.places.map(({ positionId, ...place }) => place),
     reviews: baseData.reviews,
     courses: baseData.courses,
@@ -1422,37 +1461,53 @@ async function syncFestivalsFromSource(env) {
 }
 
 async function handleFestivals(request, env) {
-  try {
-    if (env.APP_PUBLIC_EVENT_SERVICE_KEY) {
-      await syncFestivalsFromSource(env);
-    }
-  } catch (error) {
-    console.error('festival sync failed', error);
+  const now = Date.now();
+  if (festivalsCache.value && festivalsCache.expiresAt > now) {
+    return jsonResponse(200, festivalsCache.value, env, request);
   }
 
-  const now = Date.now();
-  const upcomingCutoff = now + 30 * 24 * 60 * 60 * 1000;
-  const nowIso = new Date(now).toISOString();
-  const rows = await supabaseRequest(env, `public_event?select=public_event_id,title,venue_name,road_address,starts_at,ends_at,source_page_url,latitude,longitude&district=eq.${encodeFilterValue('대전')}&ends_at=gte.${encodeFilterValue(nowIso)}&order=starts_at.asc&limit=40`);
-  const festivals = (rows || [])
-    .filter((row) => {
-      const startTime = new Date(row.starts_at).getTime();
-      const endTime = new Date(row.ends_at).getTime();
-      return Number.isFinite(startTime) && Number.isFinite(endTime) && endTime >= now && startTime <= upcomingCutoff;
-    })
-    .slice(0, 10)
-    .map((row) => ({
-      id: String(row.public_event_id),
-      title: row.title,
-      venueName: row.venue_name ?? null,
-      startDate: row.starts_at ? String(row.starts_at).slice(0, 10) : '',
-      endDate: row.ends_at ? String(row.ends_at).slice(0, 10) : '',
-      homepageUrl: row.source_page_url ?? null,
-      roadAddress: row.road_address ?? null,
-      latitude: Number(row.latitude),
-      longitude: Number(row.longitude),
-      isOngoing: new Date(row.starts_at).getTime() <= now && new Date(row.ends_at).getTime() >= now,
-    }));
+  const festivals = await rememberPending(festivalsCache, async () => {
+    if (env.APP_PUBLIC_EVENT_SERVICE_KEY && festivalsCache.syncAt + FESTIVALS_CACHE_TTL_MS <= now) {
+      try {
+        await syncFestivalsFromSource(env);
+        festivalsCache.syncAt = Date.now();
+      } catch (error) {
+        console.error('festival sync failed', error);
+      }
+    }
+
+    const upcomingCutoff = now + 30 * 24 * 60 * 60 * 1000;
+    const nowIso = new Date(now).toISOString();
+    const rows = await supabaseRequest(env, `public_event?select=public_event_id,title,venue_name,road_address,starts_at,ends_at,source_page_url,latitude,longitude&district=eq.${encodeFilterValue('대전')}&ends_at=gte.${encodeFilterValue(nowIso)}&order=starts_at.asc&limit=40`);
+    const value = (rows || [])
+      .filter((row) => {
+        const startTime = new Date(row.starts_at).getTime();
+        const endTime = new Date(row.ends_at).getTime();
+        return Number.isFinite(startTime) && Number.isFinite(endTime) && endTime >= now && startTime <= upcomingCutoff;
+      })
+      .slice(0, 10)
+      .map((row) => ({
+        id: String(row.public_event_id),
+        title: row.title,
+        venueName: row.venue_name ?? null,
+        startDate: row.starts_at ? String(row.starts_at).slice(0, 10) : '',
+        endDate: row.ends_at ? String(row.ends_at).slice(0, 10) : '',
+        homepageUrl: row.source_page_url ?? null,
+        roadAddress: row.road_address ?? null,
+        latitude: Number(row.latitude),
+        longitude: Number(row.longitude),
+        isOngoing: new Date(row.starts_at).getTime() <= now && new Date(row.ends_at).getTime() >= now,
+      }));
+
+    festivalsCache = {
+      ...festivalsCache,
+      value,
+      expiresAt: Date.now() + FESTIVALS_CACHE_TTL_MS,
+      pending: null,
+    };
+    return value;
+  });
+
   return jsonResponse(200, festivals, env, request);
 }
 async function handleBannerEvents(request, env) {
