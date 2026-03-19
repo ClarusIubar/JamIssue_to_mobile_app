@@ -5,7 +5,7 @@ JamIssue 문서는 아래 순서대로 보면 현재 구조를 가장 빠르게 
 ## 1. 제품 기준
 
 - [prd-compliance.md](/D:/Code305/JamIssue/docs/prd-compliance.md)
-  - 현재 구현이 PRD와 어디까지 맞는지
+  - PRD 대비 현재 구현 수준과 최신 반영 사항
 - [screen-spec.md](/D:/Code305/JamIssue/docs/screen-spec.md)
   - 화면 구조, 탭 규칙, 바텀 드로워 기준
 
@@ -23,7 +23,7 @@ JamIssue 문서는 아래 순서대로 보면 현재 구조를 가장 빠르게 
 - [worker-first-poc.md](/D:/Code305/JamIssue/docs/worker-first-poc.md)
   - Worker가 직접 처리하는 API 범위
 
-## 2026-03-18 기준 요약
+## 현재 기준 요약
 
 - 하단 탭은 `지도 / 피드 / 코스 / 마이`
 - `지도` 탭만 지도 + 바텀 드로워 구조

@@ -17,6 +17,7 @@ function CommentItem({
   submittingReviewId,
   onSubmitComment,
   onRequestLogin,
+  isReply = false,
 }: {
   comment: Comment;
   reviewId: string;
@@ -24,6 +25,7 @@ function CommentItem({
   submittingReviewId: string | null;
   onSubmitComment: (reviewId: string, body: string, parentId?: string) => Promise<void>;
   onRequestLogin: () => void;
+  isReply?: boolean;
 }) {
   const [replyBody, setReplyBody] = useState('');
   const [replyOpen, setReplyOpen] = useState(false);
@@ -37,27 +39,30 @@ function CommentItem({
     if (replyBody.trim().length < 2) {
       return;
     }
-    await onSubmitComment(reviewId, replyBody.trim(), comment.id);
+    // When replying to a reply, target the root comment to enforce 2-level depth
+    const parentId = isReply && comment.parentId ? comment.parentId : comment.id;
+    await onSubmitComment(reviewId, replyBody.trim(), parentId);
     setReplyBody('');
     setReplyOpen(false);
   }
 
   return (
     <li className="comment-thread__item">
+      {isReply && <span className="comment-thread__reply-indent" aria-hidden="true">ㄴ</span>}
       <div className="comment-thread__bubble">
         <div className="comment-thread__meta">
           <strong>{comment.author}</strong>
           <span>{comment.createdAt}</span>
         </div>
         <p>{comment.isDeleted ? '삭제된 댓글입니다.' : comment.body}</p>
-        {!comment.isDeleted && (
+        {!comment.isDeleted && !isReply && (
           <button type="button" className="comment-thread__reply-toggle" onClick={() => (canWriteComment ? setReplyOpen((value) => !value) : onRequestLogin())}>
             답글 달기
           </button>
         )}
       </div>
 
-      {replyOpen && (
+      {!isReply && replyOpen && (
         <form className="comment-thread__reply-form" onSubmit={handleReplySubmit}>
           <input value={replyBody} onChange={(event) => setReplyBody(event.target.value)} placeholder="답글 내용을 적어 보세요" />
           <button type="submit" className="comment-thread__submit" disabled={submittingReviewId === reviewId || replyBody.trim().length < 2}>
@@ -77,6 +82,7 @@ function CommentItem({
               submittingReviewId={submittingReviewId}
               onSubmitComment={onSubmitComment}
               onRequestLogin={onRequestLogin}
+              isReply={true}
             />
           ))}
         </ul>
