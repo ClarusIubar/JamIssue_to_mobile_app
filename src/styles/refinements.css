@@ -852,3 +852,26 @@ body {
 .map-stage__brand-title {
   letter-spacing: -0.03em !important;
 }
+
+/* 2026-03-19 course card hierarchy alignment */
+.community-route-card__header--feedlike {
+  align-items: flex-start !important;
+}
+
+.community-route-card__title-block {
+  display: grid !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+}
+
+.community-route-card__tag-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+.community-route-meta--inline {
+  margin: 0 !important;
+}
