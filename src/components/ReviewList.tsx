@@ -51,7 +51,6 @@ export function ReviewList({
                 {review.author} · {review.visitLabel} · {review.visitedAt}
               </p>
             </div>
-            <span className="counter-pill">{review.visitedAt}</span>
           </div>
 
           <div className="review-card__tag-row">

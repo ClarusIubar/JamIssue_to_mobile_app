@@ -61,11 +61,15 @@ export function CourseTab({
                 </div>
                 <button
                   type="button"
-                  className={route.likedByMe ? 'secondary-button community-like-button is-complete' : 'secondary-button community-like-button'}
+                  className={route.likedByMe ? 'review-action-button is-active community-like-button' : 'review-action-button community-like-button'}
                   disabled={routeLikeUpdatingId === route.id}
                   onClick={() => (sessionUser ? onToggleLike(route.id) : onRequestLogin())}
+                  aria-pressed={route.likedByMe}
                 >
-                  {routeLikeUpdatingId === route.id ? '반영 중' : `좋아요 ${route.likeCount}`}
+                  <span className="review-action-button__icon" aria-hidden="true">
+                    {route.likedByMe ? '♥' : '♡'}
+                  </span>
+                  <span className="review-action-button__label">{routeLikeUpdatingId === route.id ? '반영 중' : route.likeCount}</span>
                 </button>
               </div>
               <p>{route.description}</p>
