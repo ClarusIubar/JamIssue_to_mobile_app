@@ -516,6 +516,63 @@ export default function App() {
     setStampActionMessage(`\uD604\uC7A5\uAE4C\uC9C0 ${formatDistanceMeters(selectedPlaceDistanceMeters)} \uB0A8\uC544 \uC788\uC5B4\uC694. ${STAMP_UNLOCK_RADIUS_METERS}m \uC548\uC73C\uB85C \uB4E4\uC5B4\uC624\uBA74 \uC624\uB298 \uC2A4\uD0EC\uD504\uB97C \uCC0D\uC744 \uC218 \uC788\uC5B4\uC694.`);
   }, [selectedPlace, selectedPlaceDistanceMeters, sessionUser, todayStamp]);
 
+  useEffect(() => {
+    void loadApp(true);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'feed') {
+      void ensureFeedReviews().catch((error) => setNotice(formatErrorMessage(error)));
+      return;
+    }
+
+    if (activeTab === 'course') {
+      void ensureCuratedCourses().catch((error) => setNotice(formatErrorMessage(error)));
+      void fetchCommunityRoutes(communityRouteSort).catch((error) => setNotice(formatErrorMessage(error)));
+      return;
+    }
+
+    if (activeTab === 'my') {
+      if (sessionUser && myPage === null) {
+        void refreshMyPageForUser(sessionUser, true).catch((error) => setNotice(formatErrorMessage(error)));
+      }
+      if (sessionUser?.isAdmin && myPageTab === 'admin' && adminSummary === null) {
+        void refreshAdminSummary().catch((error) => setNotice(formatErrorMessage(error)));
+      }
+      if (sessionUser && myPage && myPageTab === 'comments' && !myCommentsLoadedOnce) {
+        void loadMoreMyComments(true);
+      }
+    }
+  }, [
+    activeTab,
+    communityRouteSort,
+    sessionUser,
+    myPage,
+    myPageTab,
+    adminSummary,
+    myCommentsLoadedOnce,
+  ]);
+
+  useEffect(() => {
+    if (!selectedPlaceId) {
+      setSelectedPlaceReviews([]);
+      return;
+    }
+
+    const cachedReviews = placeReviewsCacheRef.current[selectedPlaceId];
+    if (cachedReviews) {
+      setSelectedPlaceReviews(cachedReviews);
+      return;
+    }
+
+    void getReviews({ placeId: selectedPlaceId })
+      .then((nextReviews) => {
+        placeReviewsCacheRef.current[selectedPlaceId] = nextReviews;
+        setSelectedPlaceReviews(nextReviews);
+      })
+      .catch((error) => setNotice(formatErrorMessage(error)));
+  }, [selectedPlaceId]);
+
   async function loadApp(withLoading: boolean) {
     const authParams = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search);
     const authState = authParams?.get('auth');
