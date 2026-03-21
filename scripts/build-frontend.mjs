@@ -1,5 +1,5 @@
 ﻿import { build } from "esbuild";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -101,7 +101,7 @@ function createIconSvg() {
 </svg>`.trim();
 }
 
-function createIndexHtml() {
+function createIndexHtml({ jsFile, cssFile }) {
   return `<!doctype html>
 <html lang="ko">
   <head>
@@ -114,9 +114,9 @@ function createIndexHtml() {
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icons/jamissue-icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/assets/main.css" />
+    <link rel="stylesheet" href="/assets/${cssFile}" />
     <script defer src="/app-config.js"></script>
-    <script type="module" defer src="/assets/main.js"></script>
+    <script type="module" defer src="/assets/${jsFile}"></script>
   </head>
   <body>
     <div id="root"></div>
@@ -124,10 +124,23 @@ function createIndexHtml() {
 </html>`;
 }
 
-async function writeStaticFiles(publicConfig) {
+async function resolveBuiltAssets() {
+  const entries = await readdir(assetsDir, { withFileTypes: true });
+  const files = entries.filter((entry) => entry.isFile()).map((entry) => entry.name);
+  const jsFile = files.find((file) => /^main-[A-Z0-9]+\.js$/i.test(file));
+  const cssFile = files.find((file) => /^main-[A-Z0-9]+\.css$/i.test(file));
+
+  if (!jsFile || !cssFile) {
+    throw new Error(`Expected hashed main assets, found: ${files.join(", ")}`);
+  }
+
+  return { jsFile, cssFile };
+}
+
+async function writeStaticFiles(publicConfig, builtAssets) {
   await mkdir(siteDir, { recursive: true });
   await mkdir(iconsDir, { recursive: true });
-  await writeFile(path.join(siteDir, "index.html"), createIndexHtml(), "utf8");
+  await writeFile(path.join(siteDir, "index.html"), createIndexHtml(builtAssets), "utf8");
   await writeFile(path.join(siteDir, "manifest.webmanifest"), createManifest(), "utf8");
   await writeFile(path.join(iconsDir, "jamissue-icon.svg"), createIconSvg(), "utf8");
   await writeFile(
@@ -151,7 +164,8 @@ async function main() {
     entryPoints: [path.join(rootDir, "src", "main.tsx")],
     bundle: true,
     outdir: assetsDir,
-    entryNames: "main",
+    entryNames: "main-[hash]",
+    assetNames: "asset-[hash]",
     format: "esm",
     target: ["es2020", "chrome110", "safari16"],
     jsx: "automatic",
@@ -163,7 +177,8 @@ async function main() {
     logLevel: "info",
   });
 
-  await writeStaticFiles(publicConfig);
+  const builtAssets = await resolveBuiltAssets();
+  await writeStaticFiles(publicConfig, builtAssets);
   console.log(`Built mobile web bundle to ${siteDir}`);
 }
 
@@ -171,4 +186,3 @@ main().catch((error) => {
   console.error(error);
   process.exit(1);
 });
-
