@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   claimStamp,
   createComment,
@@ -7,6 +7,7 @@ import {
   deleteReview,
   createReview,
   createUserRoute,
+  getAuthSession,
   getFestivals,
   getMapBootstrap,
   getMyCommentsPage,
@@ -77,8 +78,8 @@ function formatErrorMessage(error: unknown) {
   if (error instanceof Error) {
     return error.message;
   }
+  return '요청을 처리하지 못했어요. 잠시 뒤에 다시 시도해 주세요.';
 
-  return '?遺욧퍕??筌ｌ꼶???롫뮉 餓??얜챷?ｅ첎? ??룰펷??곸뒄. ?醫롫뻻 ????쇰뻻 ??뺣즲??雅뚯눘苑??';
 }
 
 function TabPanelFallback() {
@@ -616,7 +617,7 @@ export default function App() {
       setBootstrapStatus('ready');
       if (authState === 'naver-success' && bootstrap.auth.user?.profileCompletedAt === null) {
         goToTab('my');
-        setNotice('??곌퐬?袁⑹뱽 ?類λ릭筌???곕굡?? ?꾨뗄?ょ몴?揶쏆늿? ?④쑴??疫꿸퀡以??곗쨮 ?癒?염??살쓦野???곷선揶?????됰선??');
+        setNotice('닉네임을 먼저 정하면 같은 계정으로 스탬프와 피드를 이어서 남길 수 있어요.');
       }
     } catch (error) {
       setBootstrapError(formatErrorMessage(error));
@@ -628,13 +629,13 @@ export default function App() {
 
   async function refreshCurrentPosition(shouldFocusMap: boolean) {
     setMapLocationStatus('loading');
-    setMapLocationMessage('?袁⑹삺 ?袁⑺뒄???類ㅼ뵥??랁???됰선??');
+    setMapLocationMessage('현재 위치를 확인하고 있어요.');
 
     try {
       const nextPosition = await getCurrentDevicePosition();
       setCurrentPosition({ latitude: nextPosition.latitude, longitude: nextPosition.longitude });
       setMapLocationStatus('ready');
-      setMapLocationMessage(`?袁⑹삺 ?袁⑺뒄???類ㅼ뵥??됰선?? ?袁⑺뒄 ??쇨컧????${formatDistanceMeters(nextPosition.accuracyMeters)}??됱뒄.`);
+      setMapLocationMessage(`현재 위치를 확인했어요. 위치 정확도는 약 ${formatDistanceMeters(nextPosition.accuracyMeters)}예요.`);
       if (shouldFocusMap) {
         setMapLocationFocusKey((current) => current + 1);
       }
@@ -652,7 +653,7 @@ export default function App() {
   async function handleClaimStamp(place: Place) {
     if (!sessionUser) {
       goToTab('my');
-      setNotice('嚥≪뮄??紐낅릭筌??袁⑹삢 獄쎻뫖揆 ?紐꾩쵄????랁???곕굡?? ?꾨뗄?ょ몴???곷선????????됰선??');
+      setNotice('로그인하면 스탬프를 찍고 피드도 남길 수 있어요.');
       return;
     }
 
@@ -666,7 +667,7 @@ export default function App() {
         longitude: nextPosition.longitude,
       });
       setStampState(nextStampState);
-      setNotice(`${place.name}?癒?퐣 ??삳뮎 獄쎻뫖揆 ?紐꾩쵄???袁⑥┷??됰선??`);
+        setNotice(`${place.name}에서 오늘 스탬프를 찍었어요.`);
       commitRouteState(
         {
           tab: 'map',
@@ -706,7 +707,7 @@ export default function App() {
       });
       upsertReviewCollections(createdReview);
       await refreshMyPageForUser(sessionUser);
-      setNotice('??곕굡????ｊ펷??곸뒄. 揶쏆늿? ?醫롫퓠????揶쏆뮇????곕굡筌??臾믨쉐??????됰선??');
+      setNotice('피드를 남겼어요. 이제 다른 장소도 이어서 둘러볼 수 있어요.');
       commitRouteState(
         {
           tab: 'map',
@@ -726,7 +727,7 @@ export default function App() {
   async function handleCreateComment(reviewId: string, body: string, parentId?: string) {
     if (!sessionUser) {
       goToTab('my');
-      setNotice('?蹂?????ｋ┛??삠늺 ?믪눘? 嚥≪뮄??紐낅퉸 雅뚯눘苑??');
+      setNotice('댓글을 남기려면 먼저 로그인해 주세요.');
       return;
     }
 
@@ -748,7 +749,7 @@ export default function App() {
   async function handleUpdateComment(reviewId: string, commentId: string, body: string) {
     if (!sessionUser) {
       goToTab('my');
-      setNotice('?蹂?????륁젟??롮젻筌??믪눘? 嚥≪뮄??紐낅퉸 雅뚯눘苑??');
+      setNotice('댓글을 수정하려면 먼저 로그인해 주세요.');
       return;
     }
 
@@ -773,7 +774,7 @@ export default function App() {
   async function handleDeleteComment(reviewId: string, commentId: string) {
     if (!sessionUser) {
       goToTab('my');
-      setNotice('?蹂????????롮젻筌??믪눘? 嚥≪뮄??紐낅퉸 雅뚯눘苑??');
+      setNotice('댓글을 삭제하려면 먼저 로그인해 주세요.');
       return;
     }
 
@@ -798,7 +799,10 @@ export default function App() {
   async function handleDeleteReview(reviewId: string) {
     if (!sessionUser) {
       goToTab('my');
-      setNotice('??곕굡???????롮젻筌??믪눘? 嚥≪뮄??紐낅퉸 雅뚯눘苑??');
+      setNotice('피드를 삭제하려면 먼저 로그인해 주세요.');
+      return;
+    }
+    if (!window.confirm('이 피드를 삭제할까요?')) {
       return;
     }
 
@@ -830,7 +834,7 @@ export default function App() {
       if (highlightedReviewId === reviewId) {
         setHighlightedReviewId(null);
       }
-      setNotice('??곕굡???????됰선??');
+      setNotice('피드를 삭제했어요.');
       if (activeTab === 'my') {
         await refreshMyPageForUser(sessionUser, true);
       }
@@ -844,7 +848,7 @@ export default function App() {
   async function handleToggleReviewLike(reviewId: string) {
     if (!sessionUser) {
       goToTab('my');
-      setNotice('?ル뿭釉?遺? ?袁ⓥ뀮??삠늺 ?믪눘? 嚥≪뮄??紐낅퉸 雅뚯눘苑??');
+      setNotice('좋아요를 누르려면 먼저 로그인해 주세요.');
       return;
     }
 
@@ -866,7 +870,7 @@ export default function App() {
   async function handleToggleRouteLike(routeId: string) {
     if (!sessionUser) {
       goToTab('my');
-      setNotice('?ル뿭釉?遺? ?袁ⓥ뀮??삠늺 ?믪눘? 嚥≪뮄??紐낅퉸 雅뚯눘苑??');
+      setNotice('좋아요를 누르려면 먼저 로그인해 주세요.');
       return;
     }
     setRouteLikeUpdatingId(routeId);
@@ -904,7 +908,7 @@ export default function App() {
   async function handlePublishRoute(payload: { travelSessionId: string; title: string; description: string; mood: string }) {
     if (!sessionUser) {
       goToTab('my');
-      setRouteError('嚥≪뮄??紐낅릭筌???六??紐꾨???⑤벀而??꾨뗄?ゆ에?獄쏆뮉六??????됰선??');
+      setRouteError('로그인하면 여행 세션을 코스로 발행할 수 있어요.');
       return;
     }
     setRouteSubmitting(true);
@@ -939,7 +943,7 @@ export default function App() {
           },
         };
       });
-      setNotice('?꾨뗄?ょ몴?獄쏆뮉六??됰선?? ??곸젫 ??삘뀲 ????癒? 筌ㅼ뮇???볥궢 ?ル뿭釉?遺용떄??곗쨮 癰?????됰선??');
+      setNotice('코스를 발행했어요. 공개 경로 탭에서 바로 확인할 수 있어요.');
       setMyPageTab('routes');
     } catch (error) {
       setRouteError(formatErrorMessage(error));
@@ -992,7 +996,7 @@ export default function App() {
       setStampState(nextMap.stamps);
       setHasRealData(nextMap.hasRealData);
       setFestivals(nextFestivals);
-      setNotice('?됱궗 ?곗씠?곕? ?ㅼ떆 遺덈윭?붿뼱??');
+      setNotice('행사 데이터를 다시 불러왔어요.');
     } catch (error) {
       setNotice(formatErrorMessage(error));
     } finally {
@@ -1002,7 +1006,7 @@ export default function App() {
 
   async function handleUpdateProfile(nextNickname: string) {
     if (!nextNickname || nextNickname.length < 2) {
-      setProfileError('??곌퐬?袁? ??疫꼲????곴맒??곗쨮 ??낆젾??雅뚯눘苑??');
+      setProfileError('닉네임은 두 글자 이상으로 입력해 주세요.');
       return;
     }
     setProfileSaving(true);
@@ -1013,7 +1017,7 @@ export default function App() {
       if (auth.user) {
         setMyPage((current) => (current && auth.user ? { ...current, user: auth.user } : current));
       }
-      setNotice('??곌퐬?袁⑹뱽 ???館六??곸뒄. ??곸젫 ????已??곗쨮 ??곕굡?? ?꾨뗄?ゅ첎? ??뽯뻻??깆뒄.');
+      setNotice('닉네임을 저장했어요. 이제 같은 계정으로 기록을 이어볼 수 있어요.');
     } catch (error) {
       setProfileError(formatErrorMessage(error));
     } finally {
@@ -1028,7 +1032,7 @@ export default function App() {
       setSessionUser(auth.user);
       setProviders(auth.providers);
       setMyPage(null);
-      setNotice('嚥≪뮄??袁⑹뜍??됰선??');
+      setNotice('로그아웃했어요.');
     } catch (error) {
       setNotice(formatErrorMessage(error));
     } finally {
@@ -1202,8 +1206,8 @@ export default function App() {
         ) : (
           <div className="page-stage">
             {notice && <div className="floating-notice">{notice}</div>}
-            {bootstrapStatus === 'loading' && <section className="floating-status">?븍뜄???삳뮉 餓λ쵐??癒?뒄.</section>}
-            {bootstrapStatus === 'error' && <section className="floating-status floating-status--error">{bootstrapError}</section>}
+            {bootstrapStatus === 'loading' && <section className="floating-status">데이터를 불러오고 있어요.</section>}
+            {bootstrapStatus === 'loading' && <section className="floating-status">데이터를 불러오고 있어요.</section>}
 
             {activeTab === 'feed' && (
               <FeedTab
@@ -1300,5 +1304,4 @@ export default function App() {
     </div>
   );
 }
-
 

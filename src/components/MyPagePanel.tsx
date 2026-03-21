@@ -325,20 +325,18 @@ export function MyPagePanel({
                 )}
                 {myPage.stampLogs.map((stampLog) => (
                   <article key={stampLog.id} className="review-card review-card--stamp-log">
-                    <div className="review-card__top review-card__top--feed">
+                    <div className="review-card__top review-card__top--feed review-card__top--stamp-log">
                       <div className="review-card__title-block review-card__title-block--feed">
                         <p className="eyebrow">STAMP LOG</p>
                         <strong className="review-card__title">{stampLog.placeName}</strong>
                         <p className="review-card__author-line">{'\uD68D\uB4DD / '}{stampLog.stampedAt}</p>
                       </div>
+                      <button type="button" className="review-link-button review-link-button--inline" onClick={() => onOpenPlace(stampLog.placeId)}>{'\uC774 \uC7A5\uC18C \uBCF4\uAE30'}</button>
                     </div>
                     <div className="review-card__tag-row">
                       <span className="review-card__visit-pill">{stampLog.visitLabel}</span>
                       {stampLog.isToday && <span className="soft-tag is-complete">{'\uC624\uB298'}</span>}
                       {stampLog.travelSessionId && stampLog.travelSessionStampCount >= 2 && <span className="soft-tag">{'\uC5EC\uD589 \uC138\uC158 \uC5F0\uACB0'}</span>}
-                    </div>
-                    <div className="review-card__actions review-card__actions--my-feed">
-                      <button type="button" className="review-link-button" onClick={() => onOpenPlace(stampLog.placeId)}>{'\uC774 \uC7A5\uC18C \uBCF4\uAE30'}</button>
                     </div>
                   </article>
                 ))}
