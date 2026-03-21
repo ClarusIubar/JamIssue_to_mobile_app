@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { CommentThread } from './CommentThread';
 import type { Review } from '../types';
 
@@ -153,7 +153,7 @@ export function ReviewList({
                 <span className="review-action-button__icon" aria-hidden="true">
                   <HeartIcon filled={review.likedByMe} />
                 </span>
-                <span className="review-action-button__label">{likingReviewId === review.id ? '반영 중' : review.likeCount}</span>
+                <span className="review-action-button__label">{review.likeCount}</span>
               </button>
               {onOpenComments ? (
                 <button

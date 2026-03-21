@@ -87,7 +87,7 @@ export function CourseTab({
                   aria-pressed={route.likedByMe}
                 >
                   <span className="review-action-button__icon" aria-hidden="true"><HeartIcon filled={route.likedByMe} /></span>
-                  <span className="review-action-button__label">{routeLikeUpdatingId === route.id ? '\uBC18\uC601 \uC911' : route.likeCount}</span>
+                  <span className="review-action-button__label">{route.likeCount}</span>
                 </button>
               </div>
               <p>{route.description}</p>
