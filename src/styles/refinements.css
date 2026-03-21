@@ -1318,3 +1318,15 @@ body {
   cursor: grabbing !important;
   box-shadow: 0 16px 28px rgba(74, 44, 63, 0.14) !important;
 }
+
+
+.review-card__top--stamp-log {
+  justify-content: space-between !important;
+  gap: 16px !important;
+}
+
+.review-card--stamp-log .review-link-button--inline {
+  margin-left: auto !important;
+  min-width: 110px !important;
+  align-self: flex-start !important;
+}
