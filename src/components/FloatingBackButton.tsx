@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
+﻿import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 
 const BUTTON_SIZE = 46;
 const EDGE_PADDING = 12;
@@ -24,23 +24,12 @@ function clampPosition(position: Position) {
   };
 }
 
-function getDefaultPosition(): Position {
-  if (typeof window === 'undefined') {
-    return { x: EDGE_PADDING, y: EDGE_PADDING };
-  }
-
-  return clampPosition({
-    x: window.innerWidth - BUTTON_SIZE - 14,
-    y: window.innerHeight - BUTTON_SIZE - 132,
-  });
-}
-
 interface FloatingBackButtonProps {
   onNavigateBack: () => void;
 }
 
 export function FloatingBackButton({ onNavigateBack }: FloatingBackButtonProps) {
-  const [position, setPosition] = useState<Position>(() => getDefaultPosition());
+  const [position, setPosition] = useState<Position | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const handledTapRef = useRef(false);
   const touchTimerRef = useRef<number | null>(null);
@@ -54,14 +43,13 @@ export function FloatingBackButton({ onNavigateBack }: FloatingBackButtonProps) 
     dragEnabled: false,
   });
 
-
   useEffect(() => {
     if (typeof window === 'undefined') {
       return undefined;
     }
 
     function handleResize() {
-      setPosition((current) => clampPosition(current));
+      setPosition((current) => (current ? clampPosition(current) : current));
     }
 
     window.addEventListener('resize', handleResize);
@@ -75,7 +63,10 @@ export function FloatingBackButton({ onNavigateBack }: FloatingBackButtonProps) 
     }
   }, []);
 
-  const style = useMemo(() => ({ left: position.x, top: position.y }), [position.x, position.y]);
+  const style = useMemo(
+    () => (position ? { left: position.x, top: position.y, right: 'auto', bottom: 'auto' } : undefined),
+    [position],
+  );
 
   function clearTouchTimer() {
     if (touchTimerRef.current !== null) {
@@ -100,13 +91,14 @@ export function FloatingBackButton({ onNavigateBack }: FloatingBackButtonProps) 
       return;
     }
 
+    const rect = event.currentTarget.getBoundingClientRect();
     handledTapRef.current = false;
     dragStateRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      originX: position.x,
-      originY: position.y,
+      originX: position?.x ?? rect.left,
+      originY: position?.y ?? rect.top,
       hasMoved: false,
       dragEnabled: event.pointerType === 'mouse',
     };
@@ -143,14 +135,19 @@ export function FloatingBackButton({ onNavigateBack }: FloatingBackButtonProps) 
 
     event.preventDefault();
     setIsDragging(true);
-    setPosition(clampPosition({
-      x: dragStateRef.current.originX + deltaX,
-      y: dragStateRef.current.originY + deltaY,
-    }));
+    setPosition(
+      clampPosition({
+        x: dragStateRef.current.originX + deltaX,
+        y: dragStateRef.current.originY + deltaY,
+      }),
+    );
   }
 
   function handlePointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
-    const shouldNavigate = dragStateRef.current.pointerId === event.pointerId && !dragStateRef.current.hasMoved && !dragStateRef.current.dragEnabled;
+    const shouldNavigate =
+      dragStateRef.current.pointerId === event.pointerId &&
+      !dragStateRef.current.hasMoved &&
+      !dragStateRef.current.dragEnabled;
     finishDrag(event.pointerId);
     if (shouldNavigate) {
       handledTapRef.current = true;
