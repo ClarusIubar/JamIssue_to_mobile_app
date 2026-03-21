@@ -137,8 +137,8 @@ export function NaverMap({
 }: NaverMapProps) {
   const mapElementRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
-  const placeMarkersRef = useRef<any[]>([]);
-  const festivalMarkersRef = useRef<any[]>([]);
+  const placeMarkersRef = useRef<Map<string, any>>(new Map());
+  const festivalMarkersRef = useRef<Map<string, any>>(new Map());
   const currentMarkerRef = useRef<any | null>(null);
   const routeLineRef = useRef<any | null>(null);
   const routeStepMarkersRef = useRef<any[]>([]);
@@ -237,13 +237,26 @@ export function NaverMap({
     }
 
     const maps = window.naver.maps;
-    placeMarkersRef.current.forEach((marker) => marker.setMap(null));
-    placeMarkersRef.current = [];
+    const nextIds = new Set(places.map((place) => place.id));
+
+    for (const [placeId, marker] of placeMarkersRef.current.entries()) {
+      if (!nextIds.has(placeId)) {
+        marker.setMap(null);
+        placeMarkersRef.current.delete(placeId);
+      }
+    }
 
     places.forEach((place) => {
+      const existing = placeMarkersRef.current.get(place.id);
+      const position = new maps.LatLng(place.latitude, place.longitude);
+      if (existing) {
+        existing.setPosition(position);
+        return;
+      }
+
       const marker = new maps.Marker({
         map: mapRef.current,
-        position: new maps.LatLng(place.latitude, place.longitude),
+        position,
         title: '',
         icon: {
           content: placeMarkerContent(place, place.id === selectedPlaceId),
@@ -251,7 +264,7 @@ export function NaverMap({
         },
       });
       maps.Event.addListener(marker, 'click', () => onSelectPlace(place.id));
-      placeMarkersRef.current.push(marker);
+      placeMarkersRef.current.set(place.id, marker);
     });
   }, [onSelectPlace, places, selectedPlaceId, status]);
 
@@ -261,13 +274,45 @@ export function NaverMap({
     }
 
     const maps = window.naver.maps;
-    festivalMarkersRef.current.forEach((marker) => marker.setMap(null));
-    festivalMarkersRef.current = [];
+    places.forEach((place) => {
+      const marker = placeMarkersRef.current.get(place.id);
+      if (!marker) {
+        return;
+      }
+      marker.setIcon({
+        content: placeMarkerContent(place, place.id === selectedPlaceId),
+        anchor: new maps.Point(15, 15),
+      });
+      marker.setZIndex(place.id === selectedPlaceId ? 160 : 100);
+    });
+  }, [places, selectedPlaceId, status]);
+
+  useEffect(() => {
+    if (status !== 'ready' || !window.naver?.maps || !mapRef.current) {
+      return;
+    }
+
+    const maps = window.naver.maps;
+    const nextIds = new Set(festivals.map((festival) => festival.id));
+
+    for (const [festivalId, marker] of festivalMarkersRef.current.entries()) {
+      if (!nextIds.has(festivalId)) {
+        marker.setMap(null);
+        festivalMarkersRef.current.delete(festivalId);
+      }
+    }
 
     festivals.forEach((festival) => {
+      const existing = festivalMarkersRef.current.get(festival.id);
+      const position = new maps.LatLng(festival.latitude, festival.longitude);
+      if (existing) {
+        existing.setPosition(position);
+        return;
+      }
+
       const marker = new maps.Marker({
         map: mapRef.current,
-        position: new maps.LatLng(festival.latitude, festival.longitude),
+        position,
         title: '',
         zIndex: festival.id === selectedFestivalId ? 170 : 110,
         icon: {
@@ -276,9 +321,28 @@ export function NaverMap({
         },
       });
       maps.Event.addListener(marker, 'click', () => onSelectFestival(festival.id));
-      festivalMarkersRef.current.push(marker);
+      festivalMarkersRef.current.set(festival.id, marker);
     });
   }, [festivals, onSelectFestival, selectedFestivalId, status]);
+
+  useEffect(() => {
+    if (status !== 'ready' || !window.naver?.maps || !mapRef.current) {
+      return;
+    }
+
+    const maps = window.naver.maps;
+    festivals.forEach((festival) => {
+      const marker = festivalMarkersRef.current.get(festival.id);
+      if (!marker) {
+        return;
+      }
+      marker.setIcon({
+        content: festivalMarkerContent(festival, festival.id === selectedFestivalId),
+        anchor: new maps.Point(15, 15),
+      });
+      marker.setZIndex(festival.id === selectedFestivalId ? 170 : 110);
+    });
+  }, [festivals, selectedFestivalId, status]);
 
   useEffect(() => {
     if (status !== 'ready' || !window.naver?.maps || !mapRef.current) {

@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useScrollRestoration } from '../hooks/useScrollRestoration';
-import { AdminPanel } from './AdminPanel';
 import { ProviderButtons } from './ProviderButtons';
 import type { AdminSummaryResponse, AuthProvider, CourseMood, MyPageResponse, MyPageTabKey, SessionUser, TravelSession } from '../types';
 
@@ -34,6 +33,8 @@ interface MyPagePanelProps {
   onRefreshAdmin: () => Promise<void>;
   onToggleAdminPlace: (placeId: string, nextValue: boolean) => Promise<void>;
 }
+
+const AdminPanel = lazy(() => import('./AdminPanel').then((module) => ({ default: module.AdminPanel })));
 
 const routeMoodOptions: CourseMood[] = ['데이트', '사진', '힐링', '비 오는 날'];
 

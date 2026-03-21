@@ -111,6 +111,11 @@ function createIndexHtml({ jsFile, cssFile }) {
     <meta name="description" content="${APP_DESCRIPTION}" />
     <meta name="theme-color" content="#ff7fa8" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="preconnect" href="https://oapi.map.naver.com" crossorigin />
+    <link rel="dns-prefetch" href="https://oapi.map.naver.com" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icons/jamissue-icon.svg" type="image/svg+xml" />
@@ -165,8 +170,10 @@ async function main() {
     bundle: true,
     outdir: assetsDir,
     entryNames: "main-[hash]",
+    chunkNames: "chunk-[hash]",
     assetNames: "asset-[hash]",
     format: "esm",
+    splitting: true,
     target: ["es2020", "chrome110", "safari16"],
     jsx: "automatic",
     loader: {

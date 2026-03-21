@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+﻿import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import {
   claimStamp,
   createComment,
@@ -23,11 +23,7 @@ import {
   uploadReviewImage,
 } from './api/client';
 import { BottomNav } from './components/BottomNav';
-import { CourseTab } from './components/CourseTab';
-import { EventTab } from './components/EventTab';
-import { FeedTab } from './components/FeedTab';
 import { MapTabStage } from './components/MapTabStage';
-import { MyPagePanel } from './components/MyPagePanel';
 import {
   useAppRouteState,
   clearAuthQueryParams,
@@ -62,6 +58,12 @@ import type {
 
 const STAMP_UNLOCK_RADIUS_METERS = 120;
 
+const FeedTab = lazy(() => import('./components/FeedTab').then((module) => ({ default: module.FeedTab })));
+const EventTab = lazy(() => import('./components/EventTab').then((module) => ({ default: module.EventTab })));
+const CourseTab = lazy(() => import('./components/CourseTab').then((module) => ({ default: module.CourseTab })));
+const MyPagePanel = lazy(() => import('./components/MyPagePanel').then((module) => ({ default: module.MyPagePanel })));
+
+
 function filterPlacesByCategory(places: Place[], category: Category) {
   if (category === 'all') {
     return places;
@@ -76,6 +78,14 @@ function formatErrorMessage(error: unknown) {
   }
 
   return '?遺욧퍕??筌ｌ꼶???롫뮉 餓??얜챷?ｅ첎? ??룰펷??곸뒄. ?醫롫뻻 ????쇰뻻 ??뺣즲??雅뚯눘苑??';
+}
+
+function TabPanelFallback() {
+  return (
+    <section className="page-panel page-panel--scrollable page-panel--loading">
+      <div className="page-panel__loading-copy">Loading...</div>
+    </section>
+  );
 }
 
 export default function App() {
@@ -1304,7 +1314,11 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'event' && <EventTab festivals={festivals} onOpenFestival={handleOpenFestivalWithReturn} />}
+            {activeTab === 'event' && (
+              <Suspense fallback={<TabPanelFallback />}>
+                <EventTab festivals={festivals} onOpenFestival={handleOpenFestivalWithReturn} />
+              </Suspense>
+            )}
 
             {activeTab === 'course' && (
               <CourseTab
