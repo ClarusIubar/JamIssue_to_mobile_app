@@ -1230,8 +1230,17 @@ body {
   margin-top: 4px !important;
 }
 
+.review-card--stamp-log .review-card__actions {
+  justify-content: flex-end !important;
+}
+
 .review-card--stamp-log .review-link-button {
   min-width: 118px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding-inline: 18px !important;
+  margin-left: auto !important;
 }
 
 .review-card--comment-log .review-card__content-stack {
