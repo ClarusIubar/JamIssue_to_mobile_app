@@ -7,6 +7,11 @@ const htmlPath = path.join(sampleDir, '장소별 위치 3294836daaec807c9e20de89
 const outputJsonPath = path.join(sampleDir, 'places.generated.json');
 const outputSqlPath = path.join(projectRoot, 'backend', 'sql', 'migrations', '20260323_seed_sample_places.sql');
 
+const MANUAL_OVERRIDES_BY_NUMBER = {
+  70: { latitude: 36.3688239, longitude: 127.3879822, district: '\uC11C\uAD6C' },
+  71: { latitude: 36.3601462, longitude: 127.3570634, district: '\uC720\uC131\uAD6C' },
+};
+
 const CATEGORY_META = {
   restaurant: {
     name: '맛집',
@@ -177,7 +182,10 @@ for (const match of rowMatches) {
   const longitude = Number(cells[3]);
   const latitude = Number(cells[4]);
   const category = normalizeCategory(rawCategory);
-  const district = inferDistrict(name, latitude, longitude);
+  const override = MANUAL_OVERRIDES_BY_NUMBER[number] ?? null;
+  const resolvedLatitude = override?.latitude ?? latitude;
+  const resolvedLongitude = override?.longitude ?? longitude;
+  const district = override?.district ?? inferDistrict(name, resolvedLatitude, resolvedLongitude);
   const slug = slugify(number, name, usedSlugs);
   const imageFileName = getImageFileName(number);
   const localImagePath = path.join(sampleDir, imageFileName);
@@ -191,8 +199,8 @@ for (const match of rowMatches) {
     rawCategory,
     category,
     district,
-    latitude,
-    longitude,
+    latitude: resolvedLatitude,
+    longitude: resolvedLongitude,
     summary: makeSummary(name, category),
     description: makeDescription(name, category, district),
     vibeTags: deriveTags(name, category, district, rawCategory),
