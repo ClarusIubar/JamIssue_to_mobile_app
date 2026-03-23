@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getReviews } from './api/client';
 import { BottomNav } from './components/BottomNav';
 import { CourseTab } from './components/CourseTab';
@@ -25,6 +25,13 @@ const STAMP_UNLOCK_RADIUS_METERS = 120;
 
 function reportBackgroundError(error: unknown) {
   console.error(error);
+}
+
+function formatErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return '??? ???? ????. ?? ?? ?? ??? ???.';
 }
 
 export default function App() {
@@ -381,6 +388,95 @@ export default function App() {
     setProviders,
     setIsLoggingOut,
   });
+
+  useEffect(() => {
+    if (!selectedPlace) {
+      setStampActionMessage('??? ???? ?? ??? ?? ??? ?? ??? ? ???.');
+      return;
+    }
+
+    if (!sessionUser) {
+      setStampActionMessage(`${selectedPlace.name}?? ???? ???? ?? ???? ???.`);
+      return;
+    }
+
+    if (todayStamp) {
+      setStampActionMessage(`${todayStamp.visitLabel} ?? ???? ?? ????.`);
+      return;
+    }
+
+    if (typeof selectedPlaceDistanceMeters !== 'number') {
+      setStampActionMessage('?? ??? ???? ?? ??? ?? ??? ?? ??? ????.');
+      return;
+    }
+
+    if (selectedPlaceDistanceMeters <= STAMP_UNLOCK_RADIUS_METERS) {
+      setStampActionMessage(`?? ?? ${formatDistanceMeters(selectedPlaceDistanceMeters)} ????. ?? ?? ?? ???? ?? ? ???.`);
+      return;
+    }
+
+    setStampActionMessage(`???? ${formatDistanceMeters(selectedPlaceDistanceMeters)} ?? ???. ${STAMP_UNLOCK_RADIUS_METERS}m ??? ???? ?? ???? ?? ? ???.`);
+  }, [selectedPlace, selectedPlaceDistanceMeters, sessionUser, todayStamp, setStampActionMessage]);
+
+  useEffect(() => {
+    void loadApp(true);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'feed') {
+      void ensureFeedReviews().catch(reportBackgroundError);
+      return;
+    }
+
+    if (activeTab === 'course') {
+      void ensureCuratedCourses().catch(reportBackgroundError);
+      void fetchCommunityRoutes(communityRouteSort).catch(reportBackgroundError);
+      return;
+    }
+
+    if (activeTab === 'my') {
+      if (sessionUser && myPage === null) {
+        void refreshMyPageForUser(sessionUser, true).catch(reportBackgroundError);
+      }
+      if (sessionUser?.isAdmin && myPageTab === 'admin' && adminSummary === null) {
+        void refreshAdminSummary().catch(reportBackgroundError);
+      }
+      if (sessionUser && myPage && myPageTab === 'comments' && !myCommentsLoadedOnce) {
+        void loadMoreMyComments(true).catch(reportBackgroundError);
+      }
+    }
+  }, [
+    activeTab,
+    communityRouteSort,
+    sessionUser,
+    myPage,
+    myPageTab,
+    adminSummary,
+    myCommentsLoadedOnce,
+  ]);
+
+  useEffect(() => {
+    if (activeTab !== 'map' || !selectedPlaceId) {
+      setSelectedPlaceReviews([]);
+      return;
+    }
+
+    const cachedReviews = placeReviewsCacheRef.current[selectedPlaceId];
+    if (cachedReviews) {
+      setSelectedPlaceReviews(cachedReviews);
+      return;
+    }
+
+    void getReviews({ placeId: selectedPlaceId })
+      .then((nextReviews) => {
+        placeReviewsCacheRef.current[selectedPlaceId] = nextReviews;
+        setSelectedPlaceReviews(nextReviews);
+      })
+      .catch((error) => {
+        reportBackgroundError(error);
+        setSelectedPlaceReviews([]);
+      });
+  }, [activeTab, selectedPlaceId]);
 
   return (
     <div className="map-app-shell">

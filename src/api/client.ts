@@ -430,3 +430,4 @@ export function getPlaceRecommendations(placeId: string) {
   return fetchJson<DiscoveryRecommendationsResponse>(`/api/discovery/recommendations?placeId=${encodeURIComponent(placeId)}`);
 }
 
+
