@@ -5,14 +5,14 @@ from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from .config import Settings, get_settings
 from .db import Base, get_db, get_engine, get_session_factory
-from .jwt_auth import ACCESS_TOKEN_COOKIE, issue_access_token, read_access_token
+from .jwt_auth import ACCESS_TOKEN_COOKIE, clear_auth_cookie, issue_access_token, read_access_token, set_auth_cookie
 from .models import (
     AdminPlaceOut,
     AdminSummaryResponse,
@@ -75,7 +75,13 @@ from .repository_normalized import (
     link_naver_identity,
 )
 from .seed import seed_database
-from .storage import get_storage_adapter
+from .storage import (
+    FileTooLargeError,
+    InvalidFileTypeError,
+    StorageConfigurationError,
+    StorageUploadError,
+    get_review_image_upload_service,
+)
 from .user_routes_normalized import (
     create_user_route,
     delete_user_route,
@@ -111,6 +117,22 @@ if settings.storage_backend == "local":
     app.mount(settings.upload_base_url, StaticFiles(directory=settings.upload_path), name="uploads")
 
 app.include_router(public_event_router)
+
+
+@app.exception_handler(InvalidFileTypeError)
+async def handle_invalid_file_type(_: Request, exc: InvalidFileTypeError) -> JSONResponse:
+    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": str(exc)})
+
+
+@app.exception_handler(FileTooLargeError)
+async def handle_file_too_large(_: Request, exc: FileTooLargeError) -> JSONResponse:
+    return JSONResponse(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, content={"detail": str(exc)})
+
+
+@app.exception_handler(StorageConfigurationError)
+@app.exception_handler(StorageUploadError)
+async def handle_storage_errors(_: Request, exc: ValueError) -> JSONResponse:
+    return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content={"detail": str(exc)})
 
 PROVIDER_LABELS = {
     "naver": "네이버",
@@ -226,15 +248,7 @@ def patch_auth_profile(
 
     next_session_user = to_session_user(user, app_settings.is_admin(user.user_id), provider=user.provider)
     access_token = issue_access_token(app_settings, next_session_user)
-    response.set_cookie(
-        key=ACCESS_TOKEN_COOKIE,
-        value=access_token,
-        httponly=True,
-        samesite="lax",
-        secure=app_settings.session_https,
-        max_age=app_settings.jwt_access_token_minutes * 60,
-        path="/",
-    )
+    set_auth_cookie(response, app_settings, access_token)
     return build_auth_response(next_session_user, app_settings)
 
 
@@ -354,15 +368,7 @@ def finish_naver_login(
         build_redirect_url(redirect_target, auth=success_code),
         status_code=status.HTTP_302_FOUND,
     )
-    response.set_cookie(
-        key=ACCESS_TOKEN_COOKIE,
-        value=access_token,
-        httponly=True,
-        samesite="lax",
-        secure=app_settings.session_https,
-        max_age=app_settings.jwt_access_token_minutes * 60,
-        path="/",
-    )
+    set_auth_cookie(response, app_settings, access_token)
     return response
 
 
@@ -371,7 +377,7 @@ def logout(
     response: Response,
     app_settings: Settings = Depends(get_settings),
 ) -> AuthSessionResponse:
-    response.delete_cookie(ACCESS_TOKEN_COOKIE, path="/")
+    clear_auth_cookie(response)
     return build_auth_response(None, app_settings)
 
 
@@ -570,27 +576,14 @@ async def upload_review_image(
     session_user: SessionUser = Depends(require_session_user),
     app_settings: Settings = Depends(get_settings),
 ) -> UploadResponse:
-    content_type = file.content_type or "application/octet-stream"
-    if not content_type.startswith("image/"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="이미지 파일만 업로드할 수 있어요.")
-
-    extension = Path(file.filename or "upload.jpg").suffix.lower() or ".jpg"
+    upload_service = get_review_image_upload_service(app_settings)
     raw_bytes = await file.read()
-    if len(raw_bytes) > app_settings.max_upload_size_bytes:
-        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="이미지는 5MB 이하로 올려 주세요.")
-
-    filename = f"{session_user.id.replace(':', '_')}-{uuid4().hex}{extension}"
-    storage = get_storage_adapter(app_settings)
-
-    try:
-        stored_file = storage.save_review_image(
-            owner_id=session_user.id,
-            file_name=filename,
-            content_type=content_type,
-            raw_bytes=raw_bytes,
-        )
-    except ValueError as error:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)) from error
+    stored_file = upload_service.save_review_image(
+        owner_id=session_user.id,
+        original_file_name=file.filename,
+        content_type=file.content_type,
+        raw_bytes=raw_bytes,
+    )
 
     return UploadResponse(
         url=stored_file.url,
@@ -621,7 +614,7 @@ def remove_my_account(
         delete_account(db, session_user.id)
     except ValueError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
-    response.delete_cookie(ACCESS_TOKEN_COOKIE, path="/")
+    clear_auth_cookie(response)
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
 
@@ -673,7 +666,7 @@ def patch_place_visibility(
     _: SessionUser = Depends(require_admin_user),
 ) -> AdminPlaceOut:
     try:
-        return update_place_visibility(db, place_id, payload.is_active)
+        return update_place_visibility(db, place_id, is_active=payload.is_active, is_manual_override=payload.is_manual_override)
     except ValueError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
 

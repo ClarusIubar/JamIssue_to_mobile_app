@@ -99,6 +99,7 @@ class MapPlace(Base):
     hero_label: Mapped[str] = mapped_column(String(60), nullable=False)
     jam_color: Mapped[str] = mapped_column(String(20), nullable=False)
     accent_color: Mapped[str] = mapped_column(String(20), nullable=False)
+    is_manual_override: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

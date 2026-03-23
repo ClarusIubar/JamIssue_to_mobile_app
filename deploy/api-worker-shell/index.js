@@ -1381,7 +1381,7 @@ async function buildAdminSummary(env) {
     supabaseCount(env, 'feed'),
     supabaseCount(env, 'user_comment'),
     supabaseCount(env, 'user_stamp'),
-    supabaseRequest(env, 'map?select=position_id,slug,name,district,category,is_active,updated_at&order=is_active.desc,name.asc'),
+    supabaseRequest(env, 'map?select=position_id,slug,name,district,category,is_active,is_manual_override,updated_at&order=is_active.desc,name.asc'),
     supabaseRequest(env, 'feed?select=position_id'),
   ]);
 
@@ -1404,6 +1404,7 @@ async function buildAdminSummary(env) {
       district: row.district,
       category: normalizePlaceCategory(row.category, row.slug),
       isActive: Boolean(row.is_active),
+      isManualOverride: Boolean(row.is_manual_override),
       reviewCount: reviewCountByPosition.get(String(row.position_id)) ?? 0,
       updatedAt: formatDateTime(row.updated_at),
     })),
@@ -1424,11 +1425,13 @@ async function handleAdminPlaceVisibility(request, env, placeId) {
     return jsonResponse(403, { detail: '???? ??? ? ???.' }, env, request);
   }
   const payload = await request.json().catch(() => null);
-  const nextValue = Boolean(payload?.isActive);
-  const nowIso = new Date().toISOString();
+  const body = {};
+  if (typeof payload?.isActive === 'boolean') body.is_active = payload.isActive;
+  if (typeof payload?.isManualOverride === 'boolean') body.is_manual_override = payload.isManualOverride;
+  body.updated_at = new Date().toISOString();
   const updatedRows = await supabaseRequest(env, `map?slug=eq.${encodeFilterValue(placeId)}`, {
     method: 'PATCH',
-    body: JSON.stringify({ is_active: nextValue, updated_at: nowIso }),
+    body: JSON.stringify(body),
   });
   const updatedRow = Array.isArray(updatedRows) ? updatedRows[0] : null;
   if (!updatedRow) {
@@ -1441,6 +1444,7 @@ async function handleAdminPlaceVisibility(request, env, placeId) {
     district: updatedRow.district,
     category: normalizePlaceCategory(updatedRow.category, updatedRow.slug),
     isActive: Boolean(updatedRow.is_active),
+    isManualOverride: Boolean(updatedRow.is_manual_override),
     reviewCount: (reviewRows ?? []).length,
     updatedAt: formatDateTime(updatedRow.updated_at),
   }, env, request);
