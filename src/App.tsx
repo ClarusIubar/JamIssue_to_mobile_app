@@ -3,10 +3,8 @@ import {
   getAuthSession,
   getFestivals,
   getMapBootstrap,
-  getMyCommentsPage,
   getProviderLoginUrl,
   getReviewDetail,
-  getReviewFeedPage,
   getReviews,
 } from './api/client';
 import { BottomNav } from './components/BottomNav';
@@ -27,6 +25,7 @@ import {
 import { useAppDataState } from './hooks/useAppDataState';
 import { useAppTabDataLoaders } from './hooks/useAppTabDataLoaders';
 import { useAppMutationActions } from './hooks/useAppMutationActions';
+import { useAppPaginationActions } from './hooks/useAppPaginationActions';
 import { useAppUIStore } from './store/app-ui-store';
 import { useAppRuntimeStore } from './store/app-runtime-store';
 import { getCurrentDevicePosition } from './lib/geolocation';
@@ -297,6 +296,29 @@ export default function App() {
   });
 
   const {
+    loadMoreFeedReviews,
+    loadMoreMyComments,
+  } = useAppPaginationActions({
+    sessionUser,
+    myPage,
+    feedLoadingMore,
+    feedHasMore,
+    feedNextCursor,
+    setFeedLoadingMore,
+    setReviews,
+    setFeedNextCursor,
+    setFeedHasMore,
+    myCommentsLoadingMore,
+    myCommentsHasMore,
+    myCommentsNextCursor,
+    setMyCommentsLoadingMore,
+    setMyCommentsLoadedOnce,
+    setMyPage,
+    setMyCommentsNextCursor,
+    setMyCommentsHasMore,
+  });
+
+  const {
     handleClaimStamp,
     handleCreateReview,
     handleCreateComment,
@@ -496,61 +518,6 @@ export default function App() {
     setHighlightedCommentId(null);
     setActiveCommentReviewId(null);
     goToTab('feed');
-  }
-
-  async function loadMoreFeedReviews() {
-    if (feedLoadingMore || !feedHasMore) {
-      return;
-    }
-
-    setFeedLoadingMore(true);
-    try {
-      const page = await getReviewFeedPage({ cursor: feedNextCursor, limit: 10 });
-      setReviews((current) => {
-        const existingIds = new Set(current.map((review) => review.id));
-        const nextItems = page.items.filter((review) => !existingIds.has(review.id));
-        return [...current, ...nextItems];
-      });
-      setFeedNextCursor(page.nextCursor);
-      setFeedHasMore(Boolean(page.nextCursor));
-    } catch (error) {
-      reportBackgroundError(error);
-    } finally {
-      setFeedLoadingMore(false);
-    }
-  }
-
-  async function loadMoreMyComments(initial = false) {
-    if (!sessionUser || !myPage) {
-      return;
-    }
-    if (myCommentsLoadingMore || (!initial && !myCommentsHasMore)) {
-      return;
-    }
-
-    setMyCommentsLoadingMore(true);
-    setMyCommentsLoadedOnce(true);
-    try {
-      const page = await getMyCommentsPage({ cursor: initial ? null : myCommentsNextCursor, limit: 10 });
-      setMyPage((current) => {
-        if (!current) {
-          return current;
-        }
-        const base = initial ? [] : current.comments;
-        const existingIds = new Set(base.map((comment) => comment.id));
-        const nextItems = page.items.filter((comment) => !existingIds.has(comment.id));
-        return {
-          ...current,
-          comments: [...base, ...nextItems],
-        };
-      });
-      setMyCommentsNextCursor(page.nextCursor);
-      setMyCommentsHasMore(Boolean(page.nextCursor));
-    } catch (error) {
-      reportBackgroundError(error);
-    } finally {
-      setMyCommentsLoadingMore(false);
-    }
   }
 
   async function handleOpenCommentWithReturn(reviewId: string, commentId: string | null = null) {
