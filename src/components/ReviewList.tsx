@@ -53,10 +53,27 @@ function CommentIcon() {
 }
 
 function ReviewImageFrame({ src, alt }: { src: string; alt: string }) {
+  const frameRef = useRef<HTMLDivElement | null>(null);
   const [isTall, setIsTall] = useState(false);
+  const [frameHeight, setFrameHeight] = useState(220);
+
+  useEffect(() => {
+    const updateFrameHeight = () => {
+      if (frameRef.current) {
+        setFrameHeight(frameRef.current.clientHeight || 220);
+      }
+    };
+
+    updateFrameHeight();
+    window.addEventListener('resize', updateFrameHeight);
+    return () => {
+      window.removeEventListener('resize', updateFrameHeight);
+    };
+  }, []);
 
   return (
     <div
+      ref={frameRef}
       className="review-card__image-frame"
       style={{
         width: '100%',
@@ -86,7 +103,7 @@ function ReviewImageFrame({ src, alt }: { src: string; alt: string }) {
                 position: 'absolute',
                 top: '50%',
                 left: '50%',
-                width: 'calc(100% + 180px)',
+                width: `${frameHeight}px`,
                 height: 'auto',
                 maxWidth: 'none',
                 transform: 'translate(-50%, -50%) rotate(-90deg)',
@@ -260,5 +277,3 @@ export function ReviewList({
     </div>
   );
 }
-
-
