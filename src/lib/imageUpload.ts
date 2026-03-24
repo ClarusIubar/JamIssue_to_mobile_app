@@ -1,6 +1,10 @@
-const MAX_UPLOAD_DIMENSION = 1600;
+﻿const MAX_UPLOAD_DIMENSION = 1600;
 const MAX_UPLOAD_BYTES = 1_400_000;
-const JPEG_QUALITY = 0.82;
+const MAX_SOURCE_BYTES = 10_000_000;
+const INITIAL_JPEG_QUALITY = 0.84;
+const MIN_JPEG_QUALITY = 0.58;
+const JPEG_QUALITY_STEP = 0.08;
+const MIN_DIMENSION_AFTER_RESIZE = 960;
 
 function replaceExtension(fileName: string, nextExtension: string) {
   const dotIndex = fileName.lastIndexOf('.');
@@ -43,6 +47,40 @@ async function canvasToBlob(canvas: HTMLCanvasElement, fileType: string, quality
   });
 }
 
+function shouldOptimizeImage(file: File) {
+  return file.size > MAX_UPLOAD_BYTES || file.size > MAX_SOURCE_BYTES * 0.35;
+}
+
+async function compressCanvas(canvas: HTMLCanvasElement) {
+  let quality = INITIAL_JPEG_QUALITY;
+  let blob: Blob | null = null;
+
+  while (quality >= MIN_JPEG_QUALITY) {
+    blob = await canvasToBlob(canvas, 'image/jpeg', quality);
+    if (!blob) {
+      return null;
+    }
+    if (blob.size <= MAX_UPLOAD_BYTES) {
+      return blob;
+    }
+    quality -= JPEG_QUALITY_STEP;
+  }
+
+  return blob;
+}
+
+function shrinkCanvas(canvas: HTMLCanvasElement) {
+  const resizedCanvas = document.createElement('canvas');
+  resizedCanvas.width = Math.max(MIN_DIMENSION_AFTER_RESIZE, Math.round(canvas.width * 0.75));
+  resizedCanvas.height = Math.max(MIN_DIMENSION_AFTER_RESIZE, Math.round(canvas.height * 0.75));
+  const context = resizedCanvas.getContext('2d');
+  if (!context) {
+    return null;
+  }
+  context.drawImage(canvas, 0, 0, resizedCanvas.width, resizedCanvas.height);
+  return resizedCanvas;
+}
+
 export async function prepareReviewImageUpload(file: File) {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return file;
@@ -50,19 +88,32 @@ export async function prepareReviewImageUpload(file: File) {
   if (!file.type.startsWith('image/')) {
     return file;
   }
-  if (file.size <= MAX_UPLOAD_BYTES) {
+  if (!shouldOptimizeImage(file)) {
     return file;
   }
 
   try {
     const { canvas } = await drawImageToCanvas(file);
-    const compressedBlob = await canvasToBlob(canvas, 'image/jpeg', JPEG_QUALITY);
+    let compressedBlob = await compressCanvas(canvas);
+
     if (!compressedBlob) {
       return file;
     }
-    if (compressedBlob.size >= file.size) {
+
+    if (compressedBlob.size > MAX_UPLOAD_BYTES) {
+      const resizedCanvas = shrinkCanvas(canvas);
+      if (resizedCanvas) {
+        const resizedBlob = await compressCanvas(resizedCanvas);
+        if (resizedBlob) {
+          compressedBlob = resizedBlob;
+        }
+      }
+    }
+
+    if (compressedBlob.size >= file.size && compressedBlob.size > MAX_UPLOAD_BYTES) {
       return file;
     }
+
     return new File([compressedBlob], replaceExtension(file.name, 'jpg'), {
       type: 'image/jpeg',
       lastModified: Date.now(),
