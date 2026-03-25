@@ -2,12 +2,14 @@ name = "daejeon-jamissue-api"
 main = "index.js"
 compatibility_date = "2026-03-16"
 workers_dev = true
+keep_vars = true
 
 [observability.logs]
 enabled = true
 
 [vars]
 APP_ORIGIN_API_URL = ""
+APP_NAVER_LOGIN_CLIENT_ID = "eiMR4RuAFWOIIoXoxmnN"
 APP_FRONTEND_URL = "https://daejeon.jamissue.com"
 APP_CORS_ORIGINS = "https://daejeon.jamissue.com"
 APP_NAVER_LOGIN_CALLBACK_URL = "https://api.daegeon.jamissue.com/api/auth/naver/callback"
