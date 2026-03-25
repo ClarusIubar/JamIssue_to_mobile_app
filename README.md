@@ -5,7 +5,7 @@ JamIssue는 대전 장소 탐색, 스탬프, 피드, 코스를 연결하는 웹 
 ## 배포 기준
 
 - 배포 브랜치: `main`
-- Pages 프로젝트: `daejeon-jamissue`
+- Pages 프로젝트: `daejeon-jamissue-pages`
 - Worker 프로젝트: `daejeon-jamissue-api`
 - 데이터/스토리지: Supabase
 
@@ -20,7 +20,7 @@ JamIssue는 대전 장소 탐색, 스탬프, 피드, 코스를 연결하는 웹 
   - 백엔드 `pytest`
 - [`cloudflare-pages.yml`](/D:/JamIssue/.github/workflows/cloudflare-pages.yml)
   - 정적 프런트 빌드
-  - `daejeon-jamissue`에 preview 배포
+  - `daejeon-jamissue-pages`에 preview 배포
 - [`cloudflare-worker.yml`](/D:/JamIssue/.github/workflows/cloudflare-worker.yml)
   - Worker 번들 `wrangler deploy --dry-run` 검증
 
@@ -29,7 +29,7 @@ JamIssue는 대전 장소 탐색, 스탬프, 피드, 코스를 연결하는 웹 
 - [`ci.yml`](/D:/JamIssue/.github/workflows/ci.yml)
   - 프런트/백엔드 검증
 - [`cloudflare-pages.yml`](/D:/JamIssue/.github/workflows/cloudflare-pages.yml)
-  - `daejeon-jamissue`가 없으면 생성
+  - `daejeon-jamissue-pages`가 없으면 생성
   - production branch를 `main`으로 맞춤
   - production 정적 배포 수행
 - [`cloudflare-worker.yml`](/D:/JamIssue/.github/workflows/cloudflare-worker.yml)
@@ -110,7 +110,7 @@ APP_PUBLIC_EVENT_SERVICE_KEY=<DATA_GO_KR_SERVICE_KEY>
 ### 5. Cloudflare Pages 도메인
 
 위치:
-`Cloudflare Dashboard > Workers & Pages > daejeon-jamissue > Custom domains`
+`Cloudflare Dashboard > Workers & Pages > daejeon-jamissue-pages > Custom domains`
 
 확인할 값:
 - 프런트 도메인

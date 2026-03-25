@@ -1,5 +1,5 @@
 param(
-    [string]$ProjectName = 'daejeon-jamissue',
+    [string]$ProjectName = 'daejeon-jamissue-pages',
     [string]$ProductionBranch = 'main',
     [string]$AccountId = $env:CLOUDFLARE_ACCOUNT_ID,
     [string]$ApiToken = $env:CLOUDFLARE_API_TOKEN

@@ -9,7 +9,7 @@
 ```text
 GitHub main
 -> GitHub Actions
--> Cloudflare Pages (daejeon-jamissue)
+-> Cloudflare Pages (daejeon-jamissue-pages)
 -> Cloudflare Worker (daejeon-jamissue-api)
 -> Supabase
 ```
@@ -27,7 +27,7 @@ GitHub main
 
 ### `cloudflare-pages.yml`
 
-- Pages 프로젝트명: `daejeon-jamissue`
+- Pages 프로젝트명: `daejeon-jamissue-pages`
 - PR에서는 preview 배포
 - `main` push에서는 production 배포
 - project가 없으면 workflow가 API로 생성 시도
@@ -113,7 +113,7 @@ APP_PUBLIC_EVENT_SERVICE_KEY=<DATA_GO_KR_SERVICE_KEY>
 ### Cloudflare Pages 도메인
 
 위치:
-`Cloudflare Dashboard > Workers & Pages > daejeon-jamissue > Custom domains`
+`Cloudflare Dashboard > Workers & Pages > daejeon-jamissue-pages > Custom domains`
 
 확인 항목:
 - production frontend domain
@@ -133,7 +133,7 @@ APP_PUBLIC_EVENT_SERVICE_KEY=<DATA_GO_KR_SERVICE_KEY>
 1. Supabase SQL을 적용합니다.
 2. Cloudflare Worker `daejeon-jamissue-api`에 Variables/Secrets를 입력합니다.
 3. GitHub repository secrets/variables를 입력합니다.
-4. 필요하면 [`scripts/create-cloudflare-pages-project.ps1`](/D:/JamIssue/scripts/create-cloudflare-pages-project.ps1)로 `daejeon-jamissue`를 미리 생성합니다.
+4. 필요하면 [`scripts/create-cloudflare-pages-project.ps1`](/D:/JamIssue/scripts/create-cloudflare-pages-project.ps1)로 `daejeon-jamissue-pages`를 미리 생성합니다.
 5. Pages custom domain과 Worker route/domain을 연결합니다.
 6. 네이버 개발자센터의 서비스 URL/Callback URL을 실제 도메인으로 맞춥니다.
 7. `main`에 머지해서 배포를 확인합니다.
