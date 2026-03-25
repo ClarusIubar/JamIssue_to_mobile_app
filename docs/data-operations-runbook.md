@@ -1,6 +1,6 @@
 # JamIssue 데이터 운영 가이드
 
-기준 브랜치: `codex/production-deploy`
+기준 브랜치: `main`
 
 이 문서는 운영자가 장소/이미지/공공데이터를 추가, 수정, 삭제하거나 전체 데이터를 다시 넣어야 할 때 따라가는 기준 절차입니다.
 
@@ -155,7 +155,7 @@ where slug = '081-유림공원';
 로컬 전용 `sample/` 입력 데이터를 쓸 때:
 
 ```powershell
-cd D:/Code305/JamIssue
+cd D:/JamIssue
 node scripts/generate-sample-place-data.mjs
 $env:APP_SUPABASE_SERVICE_ROLE_KEY='<SUPABASE_SERVICE_ROLE_KEY>'
 node scripts/upload-sample-place-images.mjs
@@ -190,9 +190,9 @@ API:
 
 완전히 다시 넣어야 할 때는 아래 순서를 따릅니다.
 
-1. [20260323_reset_all_app_data.sql](/D:/Code305/JamIssue/backend/sql/migrations/20260323_reset_all_app_data.sql)
-2. [20260323_add_place_images_bucket.sql](/D:/Code305/JamIssue/backend/sql/migrations/20260323_add_place_images_bucket.sql)
-3. [20260323_seed_sample_places.sql](/D:/Code305/JamIssue/backend/sql/migrations/20260323_seed_sample_places.sql)
+1. [20260323_reset_all_app_data.sql](/D:/JamIssue/backend/sql/migrations/20260323_reset_all_app_data.sql)
+2. [20260323_add_place_images_bucket.sql](/D:/JamIssue/backend/sql/migrations/20260323_add_place_images_bucket.sql)
+3. [20260323_seed_sample_places.sql](/D:/JamIssue/backend/sql/migrations/20260323_seed_sample_places.sql)
 4. 이미지 업로드 스크립트 실행
 
 좌표 보정이 포함된 최신 정본은 이미 `20260323_seed_sample_places.sql`에 반영돼 있습니다.

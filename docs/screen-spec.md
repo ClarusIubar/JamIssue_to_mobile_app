@@ -1,7 +1,7 @@
 ﻿# JamIssue 화면 설계 기준
 
 기준일: 2026-03-18  
-기준 브랜치: `codex/production-deploy`
+기준 브랜치: `main`
 
 이 문서는 PRD 방향과 현재 UI 구조를 맞추기 위한 화면 설계 기준입니다.
 

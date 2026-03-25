@@ -97,7 +97,7 @@ export function invalidateApiCache(prefixes: string[] = []) {
   }
 }
 
-const WORKER_FALLBACK_BASE_URL = 'https://jamissue-api.yhh4433.workers.dev';
+const WORKER_FALLBACK_BASE_URL = '';
 
 async function parseJsonResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -160,7 +160,7 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
     try {
       return await fetchFromBase(apiBaseUrl);
     } catch (error) {
-      const shouldFallback = apiBaseUrl !== WORKER_FALLBACK_BASE_URL && !(error instanceof ApiError);
+      const shouldFallback = Boolean(WORKER_FALLBACK_BASE_URL) && apiBaseUrl !== WORKER_FALLBACK_BASE_URL && !(error instanceof ApiError);
       if (!shouldFallback) {
         throw error;
       }

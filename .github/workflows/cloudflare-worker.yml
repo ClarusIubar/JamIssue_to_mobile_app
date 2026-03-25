@@ -3,18 +3,22 @@ name: cloudflare-worker
 on:
   push:
     branches:
-      - codex/production-deploy
+      - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: cloudflare-worker-production
+  group: cloudflare-worker-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  deploy-worker:
+  validate-worker:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -23,7 +27,22 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
+      - run: npm install -g wrangler@4.74.0
+      - name: Validate worker bundle
+        run: wrangler deploy --dry-run
+
+  deploy-worker:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: deploy/api-worker-shell
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
       - run: npm install -g wrangler@4.74.0
       - name: Deploy production worker
         env:

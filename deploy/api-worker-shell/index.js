@@ -2686,7 +2686,7 @@ export default {
       return await routeRequest(request, env);
     } catch (error) {
       return jsonResponse(500, {
-        service: 'jamissue-api-worker-poc',
+        service: 'daejeon-jamissue-api',
         status: 'worker-error',
         message: error instanceof Error ? error.message : String(error),
       }, env, request);

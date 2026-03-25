@@ -1,7 +1,7 @@
 # JamIssue PRD 구현 현황
 
 기준일: 2026-03-20  
-기준 브랜치: `codex/production-deploy`
+기준 브랜치: `main`
 
 이 문서는 현재 저장소와 라이브 배포 기준으로 PRD 구현 상태를 정리합니다.
 
@@ -130,9 +130,9 @@
   - `/api/reviews`
 
 ## 관련 문서
-- [screen-spec.md](/D:/Code305/JamIssue/docs/screen-spec.md)
-- [community-routes.md](/D:/Code305/JamIssue/docs/community-routes.md)
-- [account-identity-schema.md](/D:/Code305/JamIssue/docs/account-identity-schema.md)
-- [growgardens-deploy-runbook.md](/D:/Code305/JamIssue/docs/growgardens-deploy-runbook.md)
+- [screen-spec.md](/D:/JamIssue/docs/screen-spec.md)
+- [community-routes.md](/D:/JamIssue/docs/community-routes.md)
+- [account-identity-schema.md](/D:/JamIssue/docs/account-identity-schema.md)
+- [growgardens-deploy-runbook.md](/D:/JamIssue/docs/growgardens-deploy-runbook.md)
 
-- [search-recommendation-scope.md](/D:/Code305/JamIssue/docs/search-recommendation-scope.md)
+- [search-recommendation-scope.md](/D:/JamIssue/docs/search-recommendation-scope.md)

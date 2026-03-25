@@ -1,84 +1,108 @@
-﻿# JamIssue growgardens 운영 런북
+# JamIssue 팀 배포 런북
 
-기준 브랜치: `codex/production-deploy`
+기준 브랜치: `main`
 
-현재 운영 구조는 다음과 같습니다.
+이 문서는 team 저장소를 Cloudflare Pages + Cloudflare Workers + Supabase 조합으로 운영할 때 따라가는 기준 절차입니다.
+
+## 1. 현재 배포 구조
 
 ```text
-Frontend
--> Cloudflare Pages (jamissue-web)
-
-API
--> Cloudflare Worker (jamissue-api)
--> Supabase REST / Storage
-
-Optional
--> FastAPI origin fallback
+GitHub main
+-> GitHub Actions
+-> Cloudflare Pages (daejeon-jamissue-pages)
+-> Cloudflare Worker (daejeon-jamissue-api)
+-> Supabase
 ```
 
-## 현재 Worker가 직접 처리하는 범위
+운영 반영 기준은 `main`입니다.
+- PR to `main`: 검증 + Pages preview + Worker dry-run
+- push to `main`: production 배포
 
-- 인증 상태 조회 / 로그인 callback / 로그아웃
-- 지도 부트스트랩 / 피드 조회 / 코스 조회 / 마이페이지 요약
-- 후기 업로드 / 작성 / 댓글 / 좋아요
-- 스탬프 토글
-- 사용자 생성 코스 조회 / 작성 / 좋아요
-- 축제 정보 동기화 / 조회
-- 프로필 수정
+## 2. GitHub Actions 워크플로
 
-## Worker가 직접 처리하지 않는 범위
+### `ci.yml`
 
-- 카카오 OAuth 실제 연결
-- 관리자 운영 API
-- FastAPI origin fallback을 쓰는 별도 확장 기능
+- 프런트 `npm ci`, `npm run typecheck`, `npm run build`
+- 백엔드 `pytest`
 
-## 1. Supabase SQL 적용 순서
+### `cloudflare-pages.yml`
 
-신규 프로젝트 기준:
-1. [supabase_schema.sql](/D:/Code305/JamIssue/backend/sql/supabase_schema.sql)
-2. [supabase_storage.sql](/D:/Code305/JamIssue/backend/sql/supabase_storage.sql)
-3. [20260318_seed_daejeon_places_50.sql](/D:/Code305/JamIssue/backend/sql/migrations/20260318_seed_daejeon_places_50.sql)
-4. [20260318_seed_daejeon_activity.sql](/D:/Code305/JamIssue/backend/sql/migrations/20260318_seed_daejeon_activity.sql)
-5. [20260318_normalize_place_categories.sql](/D:/Code305/JamIssue/backend/sql/migrations/20260318_normalize_place_categories.sql)
-6. [20260319_map_image_and_unique_nickname.sql](/D:/Code305/JamIssue/backend/sql/migrations/20260319_map_image_and_unique_nickname.sql)
+- Pages 프로젝트명: `daejeon-jamissue-pages`
+- PR에서는 preview 배포
+- `main` push에서는 production 배포
+- project가 없으면 workflow가 API로 생성 시도
 
-## 2. Cloudflare Pages 환경변수
+### `cloudflare-worker.yml`
 
-프로젝트: `jamissue-web`  
-위치: `Workers & Pages -> jamissue-web -> Settings -> Environment variables`
+- Worker 프로젝트명: `daejeon-jamissue-api`
+- PR에서는 `wrangler deploy --dry-run`
+- `main` push에서는 production deploy
+
+## 3. 어디에 어떤 키를 넣는가
+
+### GitHub Repository Secrets
+
+위치:
+`GitHub > Repository > Settings > Secrets and variables > Actions > Repository secrets`
 
 ```env
-PUBLIC_APP_BASE_URL=https://api.jamissue.growgardens.app
+CLOUDFLARE_API_TOKEN=<Cloudflare API token>
+CLOUDFLARE_ACCOUNT_ID=<Cloudflare account id>
+```
+
+용도:
+- Pages 배포
+- Worker 배포
+- Pages 프로젝트 생성/production branch 설정
+
+권장 메모:
+- `CLOUDFLARE_API_TOKEN`은 Pages와 Workers를 배포할 수 있는 권한이 필요합니다.
+
+### GitHub Repository Variables
+
+위치:
+`GitHub > Repository > Settings > Secrets and variables > Actions > Repository variables`
+
+```env
+PUBLIC_APP_BASE_URL=https://<api-domain>
 PUBLIC_NAVER_MAP_CLIENT_ID=<NAVER_DYNAMIC_MAP_CLIENT_ID>
 ```
 
-## 3. Cloudflare Worker Variables
+용도:
+- 프런트 빌드 시 공개 설정 주입
 
-프로젝트: `jamissue-api`  
-위치: `Workers & Pages -> jamissue-api -> Settings -> Variables and Secrets -> Variables`
+### Cloudflare Worker Variables
+
+위치:
+`Cloudflare Dashboard > Workers & Pages > daejeon-jamissue-api > Settings > Variables and Secrets > Variables`
 
 ```env
 APP_ENV=worker-first
 APP_SESSION_HTTPS=true
-APP_FRONTEND_URL=https://jamissue.growgardens.app
-APP_CORS_ORIGINS=https://jamissue.growgardens.app
-APP_NAVER_LOGIN_CALLBACK_URL=https://api.jamissue.growgardens.app/api/auth/naver/callback
+APP_FRONTEND_URL=https://<frontend-domain>
+APP_CORS_ORIGINS=https://<frontend-domain>
+APP_NAVER_LOGIN_CALLBACK_URL=https://<api-domain>/api/auth/naver/callback
 APP_STORAGE_BACKEND=supabase
-APP_SUPABASE_URL=https://ifofgcaqrgtiurzqhiyy.supabase.co
+APP_SUPABASE_URL=https://<project-ref>.supabase.co
 APP_SUPABASE_STORAGE_BUCKET=review-images
 APP_STAMP_UNLOCK_RADIUS_METERS=120
 APP_PUBLIC_EVENT_SOURCE_URL=https://api.data.go.kr/openapi/tn_pubr_public_cltur_fstvl_api
 APP_ORIGIN_API_URL=
 ```
 
-## 4. Cloudflare Worker Secrets
+주의:
+- `APP_FRONTEND_URL`과 `APP_CORS_ORIGINS`는 실제 Pages 도메인과 같아야 합니다.
+- `APP_NAVER_LOGIN_CALLBACK_URL`은 실제 API 도메인과 같아야 합니다.
+- `APP_ORIGIN_API_URL`은 FastAPI origin fallback이 필요할 때만 넣습니다.
 
-프로젝트: `jamissue-api`  
-위치: `Workers & Pages -> jamissue-api -> Settings -> Variables and Secrets -> Secrets`
+### Cloudflare Worker Secrets
+
+위치:
+`Cloudflare Dashboard > Workers & Pages > daejeon-jamissue-api > Settings > Variables and Secrets > Secrets`
 
 ```env
-APP_SESSION_SECRET=<랜덤 64자 이상 문자열>
-APP_JWT_SECRET=<랜덤 64자 이상 문자열>
+APP_SESSION_SECRET=<random 64+ chars>
+APP_JWT_SECRET=<random 64+ chars>
 APP_DATABASE_URL=postgres://postgres.<project-ref>:<DB_PASSWORD>@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres
 APP_SUPABASE_SERVICE_ROLE_KEY=<SUPABASE_SERVICE_ROLE_KEY>
 APP_NAVER_LOGIN_CLIENT_ID=<NAVER_LOGIN_CLIENT_ID>
@@ -86,19 +110,84 @@ APP_NAVER_LOGIN_CLIENT_SECRET=<NAVER_LOGIN_CLIENT_SECRET>
 APP_PUBLIC_EVENT_SERVICE_KEY=<DATA_GO_KR_SERVICE_KEY>
 ```
 
-## 5. 네이버 개발자센터 설정
+### Cloudflare Pages 도메인
 
-- 서비스 URL: `https://jamissue.growgardens.app`
-- Callback URL: `https://api.jamissue.growgardens.app/api/auth/naver/callback`
+위치:
+`Cloudflare Dashboard > Workers & Pages > daejeon-jamissue-pages > Custom domains`
 
-## 6. 운영 주소
+확인 항목:
+- production frontend domain
+- preview domain 또는 `*.pages.dev`
 
-- 프론트: `https://jamissue.growgardens.app`
-- API: `https://api.jamissue.growgardens.app`
-- Worker 원본 주소: `https://jamissue-api.yhh4433.workers.dev`
+### 네이버 개발자센터
+
+위치:
+`네이버 개발자센터 > 애플리케이션 설정`
+
+입력 항목:
+- 서비스 URL = frontend domain
+- Callback URL = `https://<api-domain>/api/auth/naver/callback`
+
+## 4. 초기 셋업 순서
+
+1. Supabase SQL을 적용합니다.
+2. Cloudflare Worker `daejeon-jamissue-api`에 Variables/Secrets를 입력합니다.
+3. GitHub repository secrets/variables를 입력합니다.
+4. 필요하면 [`scripts/create-cloudflare-pages-project.ps1`](/D:/JamIssue/scripts/create-cloudflare-pages-project.ps1)로 `daejeon-jamissue-pages`를 미리 생성합니다.
+5. Pages custom domain과 Worker route/domain을 연결합니다.
+6. 네이버 개발자센터의 서비스 URL/Callback URL을 실제 도메인으로 맞춥니다.
+7. `main`에 머지해서 배포를 확인합니다.
+
+## 5. Supabase SQL 적용 순서
+
+신규 프로젝트 기준:
+
+1. [backend/sql/supabase_schema.sql](/D:/JamIssue/backend/sql/supabase_schema.sql)
+2. [backend/sql/supabase_storage.sql](/D:/JamIssue/backend/sql/supabase_storage.sql)
+3. [backend/sql/migrations/20260319_map_image_and_unique_nickname.sql](/D:/JamIssue/backend/sql/migrations/20260319_map_image_and_unique_nickname.sql)
+4. [backend/sql/migrations/20260323_add_map_image_storage_path.sql](/D:/JamIssue/backend/sql/migrations/20260323_add_map_image_storage_path.sql)
+
+샘플 장소 데이터로 완전 초기화하려면:
+
+1. [backend/sql/migrations/20260323_reset_all_app_data.sql](/D:/JamIssue/backend/sql/migrations/20260323_reset_all_app_data.sql)
+2. [backend/sql/migrations/20260323_add_place_images_bucket.sql](/D:/JamIssue/backend/sql/migrations/20260323_add_place_images_bucket.sql)
+3. [backend/sql/migrations/20260323_seed_sample_places.sql](/D:/JamIssue/backend/sql/migrations/20260323_seed_sample_places.sql)
+
+## 6. 수동 명령
+
+Pages 프로젝트 생성:
+
+```powershell
+cd D:\JamIssue
+.\scripts\create-cloudflare-pages-project.ps1
+```
+
+Pages 수동 배포:
+
+```powershell
+cd D:\JamIssue
+.\scripts\deploy-cloudflare-pages.ps1
+```
+
+프런트 검증:
+
+```powershell
+cd D:\JamIssue
+npm.cmd install
+npm.cmd run typecheck
+npm.cmd run build
+```
+
+백엔드 검증:
+
+```powershell
+cd D:\JamIssue\backend
+python -m pytest tests
+```
 
 ## 7. 운영 메모
 
 - 축제 데이터는 공공데이터 API를 바탕으로 동기화됩니다.
-- `APP_ORIGIN_API_URL`은 FastAPI origin fallback이 필요할 때만 사용합니다.
-- live DB가 과거 상태여도 worker는 `map.image_url`을 null 허용으로 처리하도록 맞춰져 있습니다.
+- `APP_ORIGIN_API_URL`이 비어 있으면 origin fallback은 사용하지 않습니다.
+- PR에서는 Worker production 배포를 하지 않습니다.
+- 프런트 preview는 Pages에서 확인하고, production 반영은 `main` merge 후 확인합니다.

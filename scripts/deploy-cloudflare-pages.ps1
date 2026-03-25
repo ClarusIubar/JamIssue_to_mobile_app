@@ -1,6 +1,6 @@
-﻿param(
-    [string]$ProjectName = $(if($env:CLOUDFLARE_PAGES_PROJECT_NAME){$env:CLOUDFLARE_PAGES_PROJECT_NAME}else{'jamissue-web'}),
-    [string]$Branch = 'codex/deploy-stack'
+param(
+    [string]$ProjectName = $(if($env:CLOUDFLARE_PAGES_PROJECT_NAME){$env:CLOUDFLARE_PAGES_PROJECT_NAME}else{'daejeon-jamissue-pages'}),
+    [string]$Branch = 'main'
 )
 
 Push-Location (Resolve-Path "$PSScriptRoot\..")

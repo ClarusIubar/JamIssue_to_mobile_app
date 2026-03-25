@@ -1,10 +1,6 @@
-﻿name: container-release
+name: container-release-legacy
 
 on:
-  push:
-    branches:
-      - codex/deploy-stack
-      - deploy
   workflow_dispatch:
 
 permissions:
@@ -75,4 +71,4 @@ jobs:
           path: |
             deploy/docker-compose.cloudflare.yml
             deploy/.env.cloudflare.example
-            docs/deployment-cloudflare.md
+            README.md
