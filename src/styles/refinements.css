@@ -918,6 +918,16 @@ body {
   line-height: 1.2 !important;
 }
 
+.festival-card__title {
+  font-size: 0.98rem !important;
+  line-height: 1.24 !important;
+  font-weight: 620 !important;
+  letter-spacing: -0.025em !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
 .panel-header p:last-child,
 .section-copy,
 .empty-copy,
