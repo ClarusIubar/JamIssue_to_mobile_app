@@ -162,7 +162,7 @@ function CommentItem({
 
           {!comment.isDeleted && (
             <div className="comment-thread__actions">
-              {!isReply && (
+              {canWriteComment && (
                 <button type="button" className="comment-thread__reply-toggle" onClick={handleReplyToggle}>
                   답글 달기
                 </button>
