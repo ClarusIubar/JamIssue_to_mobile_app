@@ -5,6 +5,7 @@ from ..models import CommentCreate, ReviewCreate, ReviewLikeResponse, ReviewOut,
 from ..notification_broker import notification_broker
 from ..repository_normalized import (
     create_comment,
+    create_comment_with_notifications,
     create_review,
     delete_comment,
     delete_review,
@@ -54,7 +55,7 @@ def read_review_comments_service(db: Session, review_id: str):
 
 def create_comment_service(db: Session, review_id: str, payload: CommentCreate, session_user: SessionUser):
     try:
-        comments, notifications = create_comment(db, review_id, payload, session_user.id, session_user.nickname)
+        comments, notifications = create_comment_with_notifications(db, review_id, payload, session_user.id, session_user.nickname)
         for recipient_user_id, notification in notifications:
             notification_broker.publish(
                 recipient_user_id,

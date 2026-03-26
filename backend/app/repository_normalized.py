@@ -580,7 +580,7 @@ def toggle_review_like(db: Session, review_id: str, user_id: str, nickname: str)
     like_count = db.scalar(select(func.count()).select_from(FeedLike).where(FeedLike.feed_id == feed.feed_id)) or 0
     return ReviewLikeResponse(reviewId=str(feed.feed_id), likeCount=int(like_count), likedByMe=liked_by_me)
 
-def create_comment(
+def create_comment_with_notifications(
     db: Session,
     review_id: str,
     payload: CommentCreate,
@@ -654,6 +654,17 @@ def create_comment(
             notifications.append((feed.user_id, notification))
     db.commit()
     return get_review_comments(db, review_id), notifications
+
+
+def create_comment(
+    db: Session,
+    review_id: str,
+    payload: CommentCreate,
+    user_id: str,
+    nickname: str,
+) -> list[CommentOut]:
+    comments, _ = create_comment_with_notifications(db, review_id, payload, user_id, nickname)
+    return comments
 
 
 def delete_comment(
