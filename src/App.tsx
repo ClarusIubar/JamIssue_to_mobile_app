@@ -44,6 +44,7 @@ import {
 import { useAppDataState } from './hooks/useAppDataState';
 import { useAppTabDataLoaders } from './hooks/useAppTabDataLoaders';
 import { getCurrentDevicePosition } from './lib/geolocation';
+import { useAppUIStore, type ReturnViewState } from './store/app-ui-store';
 import { useNotificationStore } from './store/notification-store';
 import {
   calculateDistanceMeters,
@@ -55,14 +56,10 @@ import {
 import type {
   ApiStatus,
   Category,
-  CommunityRouteSort,
-  DrawerState,
   FestivalItem,
-  MyPageTabKey,
   Place,
   ReviewMood,
   RoutePreview,
-  SessionUser,
   Tab,
   UserNotification,
 } from './types';
@@ -99,6 +96,10 @@ function TabPanelFallback() {
   );
 }
 
+function buildReturnViewSnapshot(params: ReturnViewState): ReturnViewState {
+  return params;
+}
+
 export default function App() {
   const notifications = useNotificationStore((state) => state.notifications);
   const unreadNotificationCount = useNotificationStore((state) => state.unreadCount);
@@ -125,9 +126,20 @@ export default function App() {
 
   const [initialMapViewport] = useState(getInitialMapViewport);
 
-  const [myPageTab, setMyPageTab] = useState<MyPageTabKey>('stamps');
-  const [feedPlaceFilterId, setFeedPlaceFilterId] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState<Category>('all');
+  const myPageTab = useAppUIStore((state) => state.myPageTab);
+  const setMyPageTab = useAppUIStore((state) => state.setMyPageTab);
+  const feedPlaceFilterId = useAppUIStore((state) => state.feedPlaceFilterId);
+  const setFeedPlaceFilterId = useAppUIStore((state) => state.setFeedPlaceFilterId);
+  const activeCategory = useAppUIStore((state) => state.activeCategory);
+  const setActiveCategory = useAppUIStore((state) => state.setActiveCategory);
+  const activeCommentReviewId = useAppUIStore((state) => state.activeCommentReviewId);
+  const setActiveCommentReviewId = useAppUIStore((state) => state.setActiveCommentReviewId);
+  const highlightedCommentId = useAppUIStore((state) => state.highlightedCommentId);
+  const setHighlightedCommentId = useAppUIStore((state) => state.setHighlightedCommentId);
+  const highlightedReviewId = useAppUIStore((state) => state.highlightedReviewId);
+  const setHighlightedReviewId = useAppUIStore((state) => state.setHighlightedReviewId);
+  const returnView = useAppUIStore((state) => state.returnView);
+  const setReturnView = useAppUIStore((state) => state.setReturnView);
   const [notice, setNotice] = useState<string | null>(getInitialNotice);
   const [currentPosition, setCurrentPosition] = useState<{ latitude: number; longitude: number } | null>(null);
   const [mapLocationStatus, setMapLocationStatus] = useState<ApiStatus>('idle');
@@ -139,20 +151,6 @@ export default function App() {
   const [commentSubmittingReviewId, setCommentSubmittingReviewId] = useState<string | null>(null);
   const [commentMutatingId, setCommentMutatingId] = useState<string | null>(null);
   const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
-  const [activeCommentReviewId, setActiveCommentReviewId] = useState<string | null>(null);
-  const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null);
-  const [highlightedReviewId, setHighlightedReviewId] = useState<string | null>(null);
-  const [returnView, setReturnView] = useState<{
-    tab: Tab;
-    myPageTab: MyPageTabKey;
-    activeCommentReviewId: string | null;
-    highlightedCommentId: string | null;
-    highlightedReviewId: string | null;
-    placeId: string | null;
-    festivalId: string | null;
-    drawerState: DrawerState;
-    feedPlaceFilterId: string | null;
-  } | null>(null);
   const [stampActionStatus, setStampActionStatus] = useState<ApiStatus>('idle');
   const [stampActionMessage, setStampActionMessage] = useState('장소를 선택하면 오늘 스탬프 가능 여부를 바로 확인할 수 있어요.');
   const [routeSubmitting, setRouteSubmitting] = useState(false);
@@ -364,7 +362,7 @@ export default function App() {
 
   function handleOpenRoutePreview(route: RoutePreview) {
     if (activeTab !== 'map') {
-      setReturnView({
+      setReturnView(buildReturnViewSnapshot({
         tab: activeTab,
         myPageTab,
         activeCommentReviewId,
@@ -374,7 +372,7 @@ export default function App() {
         festivalId: selectedFestivalId,
         drawerState,
         feedPlaceFilterId,
-      });
+      }));
     }
     setSelectedRoutePreview(route);
     handleCloseReviewComments();
@@ -384,7 +382,7 @@ export default function App() {
   function handleOpenPlaceWithReturn(placeId: string) {
     if (activeTab !== 'map') {
       const preserveFeedFocus = activeTab !== 'feed';
-      setReturnView({
+      setReturnView(buildReturnViewSnapshot({
         tab: activeTab,
         myPageTab,
         activeCommentReviewId: preserveFeedFocus ? activeCommentReviewId : null,
@@ -394,7 +392,7 @@ export default function App() {
         festivalId: selectedFestivalId,
         drawerState,
         feedPlaceFilterId,
-      });
+      }));
     }
     setSelectedRoutePreview(null);
     openPlace(placeId);
@@ -403,7 +401,7 @@ export default function App() {
 
   function handleOpenFestivalWithReturn(festivalId: string) {
     if (activeTab !== 'map') {
-      setReturnView({
+      setReturnView(buildReturnViewSnapshot({
         tab: activeTab,
         myPageTab,
         activeCommentReviewId,
@@ -413,7 +411,7 @@ export default function App() {
         festivalId: selectedFestivalId,
         drawerState,
         feedPlaceFilterId,
-      });
+      }));
     }
     setSelectedRoutePreview(null);
     openFestival(festivalId);
@@ -442,7 +440,7 @@ export default function App() {
   async function handleOpenReviewWithReturn(reviewId: string | null) {
     await ensureReviewLoadedById(reviewId);
     if (activeTab !== 'feed') {
-      setReturnView({
+      setReturnView(buildReturnViewSnapshot({
         tab: activeTab,
         myPageTab,
         activeCommentReviewId,
@@ -452,7 +450,7 @@ export default function App() {
         festivalId: selectedFestivalId,
         drawerState,
         feedPlaceFilterId,
-      });
+      }));
     }
     setFeedPlaceFilterId(null);
     setHighlightedReviewId(reviewId);
@@ -463,7 +461,7 @@ export default function App() {
 
   function handleOpenPlaceFeedWithReturn(placeId: string) {
     if (activeTab !== 'feed') {
-      setReturnView({
+      setReturnView(buildReturnViewSnapshot({
         tab: activeTab,
         myPageTab,
         activeCommentReviewId,
@@ -473,9 +471,8 @@ export default function App() {
         festivalId: selectedFestivalId,
         drawerState,
         feedPlaceFilterId,
-      });
+      }));
     }
-    setSelectedRoutePreview(null);
     setSelectedRoutePreview(null);
     setFeedPlaceFilterId(placeId);
     setHighlightedReviewId(null);
@@ -541,7 +538,7 @@ export default function App() {
 
   async function handleOpenCommentWithReturn(reviewId: string, commentId: string | null = null) {
     if (activeTab !== 'feed') {
-      setReturnView({
+      setReturnView(buildReturnViewSnapshot({
         tab: activeTab,
         myPageTab,
         activeCommentReviewId,
@@ -551,7 +548,7 @@ export default function App() {
         festivalId: selectedFestivalId,
         drawerState,
         feedPlaceFilterId,
-      });
+      }));
     }
     await ensureReviewLoadedById(reviewId);
     handleOpenReviewComments(reviewId, commentId);
@@ -1246,7 +1243,6 @@ export default function App() {
       setHighlightedReviewId(returnView.highlightedReviewId);
       setFeedPlaceFilterId(returnView.feedPlaceFilterId);
       setSelectedRoutePreview(null);
-      setSelectedRoutePreview(null);
       const nextTab = returnView.tab;
       setReturnView(null);
       commitRouteState(
@@ -1258,11 +1254,6 @@ export default function App() {
         },
         'replace',
       );
-      return;
-    }
-
-    if (selectedRoutePreview) {
-      setSelectedRoutePreview(null);
       return;
     }
 
