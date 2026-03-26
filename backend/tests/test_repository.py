@@ -224,8 +224,11 @@ def test_delete_comment_keeps_reply_tree(tmp_path: Path):
 
     assert tree[0].replies[0].body == '대댓글'
     assert len(updated_tree) == 1
-    assert updated_tree[0].body == '대댓글'
-    assert updated_tree[0].parent_id is None
+    assert updated_tree[0].body == '삭제된 댓글입니다.'
+    assert updated_tree[0].is_deleted is True
+    assert len(updated_tree[0].replies) == 1
+    assert updated_tree[0].replies[0].body == '대댓글'
+    assert updated_tree[0].replies[0].parent_id == updated_tree[0].id
 
 
 def test_delete_parent_and_reply_hides_entire_thread(tmp_path: Path):

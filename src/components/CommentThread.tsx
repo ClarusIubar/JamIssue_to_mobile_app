@@ -34,10 +34,15 @@ function normalizeRenderableComments(comments: Comment[]): Comment[] {
   return comments.flatMap((comment) => {
     const replies = normalizeRenderableComments(comment.replies);
     if (comment.isDeleted) {
-      return replies.map((reply) => ({
-        ...reply,
-        parentId: null,
-      }));
+      if (replies.length === 0) {
+        return [];
+      }
+      return [
+        {
+          ...comment,
+          replies,
+        },
+      ];
     }
     return [
       {

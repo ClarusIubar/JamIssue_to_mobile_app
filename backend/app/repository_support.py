@@ -207,9 +207,8 @@ def build_comment_tree(comments: list[UserComment]) -> list[CommentOut]:
         for node in comment_nodes:
             node.replies = collapse_deleted_nodes(node.replies)
             if node.is_deleted:
-                for reply in node.replies:
-                    reply.parent_id = None
-                visible_nodes.extend(node.replies)
+                if node.replies:
+                    visible_nodes.append(node)
                 continue
             visible_nodes.append(node)
         return visible_nodes
