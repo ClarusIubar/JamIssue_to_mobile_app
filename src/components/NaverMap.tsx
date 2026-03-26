@@ -108,12 +108,12 @@ function routeStepMarkerContent(step: number) {
 function getSelectionVerticalOffset(mapElement: HTMLDivElement | null, targetType: 'place' | 'festival') {
   const mapHeight = mapElement?.clientHeight ?? 0;
   if (mapHeight <= 0) {
-    return targetType === 'place' ? 150 : 120;
+    return targetType === 'place' ? 225 : 170;
   }
 
-  const ratio = targetType === 'place' ? 0.22 : 0.16;
-  const minOffset = targetType === 'place' ? 135 : 105;
-  const maxOffset = targetType === 'place' ? 190 : 150;
+  const ratio = targetType === 'place' ? 0.34 : 0.26;
+  const minOffset = targetType === 'place' ? 210 : 155;
+  const maxOffset = targetType === 'place' ? 280 : 215;
   return Math.min(maxOffset, Math.max(minOffset, Math.round(mapHeight * ratio)));
 }
 
