@@ -2,6 +2,8 @@ export interface ClientConfig {
   // Despite the legacy name PUBLIC_APP_BASE_URL, this value is used as the API base URL.
   apiBaseUrl: string;
   naverMapClientId: string;
+  supabaseUrl: string;
+  supabaseAnonKey: string;
 }
 
 declare global {
@@ -14,9 +16,13 @@ export function getClientConfig(): ClientConfig {
   const browserConfig = typeof window === 'undefined' ? undefined : window.__JAMISSUE_CONFIG__;
   const apiBaseUrl = (browserConfig?.apiBaseUrl || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8000')).replace(/\/$/, '');
   const naverMapClientId = browserConfig?.naverMapClientId?.trim() || '';
+  const supabaseUrl = browserConfig?.supabaseUrl?.trim() || '';
+  const supabaseAnonKey = browserConfig?.supabaseAnonKey?.trim() || '';
 
   return {
     apiBaseUrl,
     naverMapClientId,
+    supabaseUrl,
+    supabaseAnonKey,
   };
 }

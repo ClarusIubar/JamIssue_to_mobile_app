@@ -389,6 +389,11 @@ function parseCookies(request) {
   return cookies;
 }
 
+async function sha256Base64Url(value) {
+  const digest = await crypto.subtle.digest('SHA-256', textEncoder.encode(value));
+  return base64UrlEncode(new Uint8Array(digest));
+}
+
 function isAdminUser(env, userId) {
   const adminIds = (env.APP_ADMIN_USER_IDS ?? '')
     .split(',')
@@ -2687,6 +2692,105 @@ async function loadUserNotifications(env, userId, limit = 30) {
   }));
 }
 
+async function countUnreadNotifications(env, userId) {
+  const rows = await supabaseRequest(
+    env,
+    `user_notification?select=notification_id&user_id=eq.${encodeFilterValue(userId)}&is_read=eq.false`,
+  );
+  return rows?.length ?? 0;
+}
+
+async function loadNotificationById(env, notificationId) {
+  const row = await readNotificationRow(env, notificationId);
+  if (!row) {
+    return null;
+  }
+  let actorName = null;
+  if (row.actor_user_id) {
+    const actorRows = await supabaseRequest(
+      env,
+      `user?select=user_id,nickname&user_id=eq.${encodeFilterValue(row.actor_user_id)}&limit=1`,
+    );
+    actorName = actorRows?.[0]?.nickname ?? null;
+  }
+  return {
+    id: String(row.notification_id),
+    type: row.type,
+    title: row.title,
+    body: row.body ?? '',
+    createdAt: formatDateTime(row.created_at),
+    isRead: Boolean(row.is_read),
+    reviewId: row.review_id ? String(row.review_id) : null,
+    commentId: row.comment_id ? String(row.comment_id) : null,
+    routeId: row.route_id ? String(row.route_id) : null,
+    actorName,
+  };
+}
+
+async function buildNotificationRealtimeTopic(env, userId) {
+  const secret = getSigningSecret(env);
+  if (!secret) {
+    throw new Error('Notification realtime secret is missing.');
+  }
+  const signature = await sha256Base64Url(`${userId}:${secret}:notifications`);
+  return `user-notifications:${userId}:${signature}`;
+}
+
+async function sendRealtimeBroadcast(env, topic, event, payload) {
+  if (!env.APP_SUPABASE_URL) {
+    return;
+  }
+
+  const apiKey = getSupabaseKey(env);
+  if (!apiKey) {
+    return;
+  }
+
+  await fetch(`${env.APP_SUPABASE_URL}/realtime/v1/api/broadcast`, {
+    method: 'POST',
+    headers: {
+      apikey: apiKey,
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messages: [
+        {
+          topic,
+          event,
+          payload,
+          private: false,
+        },
+      ],
+    }),
+  });
+}
+
+async function publishNotificationEvent(env, userId, event, payload) {
+  const topic = await buildNotificationRealtimeTopic(env, userId);
+  await sendRealtimeBroadcast(env, topic, event, payload);
+}
+
+async function handleMyNotifications(request, env) {
+  const sessionResult = await requireSessionUser(request, env);
+  if (sessionResult.response) {
+    return sessionResult.response;
+  }
+
+  const notifications = await loadUserNotifications(env, sessionResult.sessionUser.id, 50);
+  return jsonResponse(200, notifications, env, request);
+}
+
+async function handleNotificationRealtimeChannel(request, env) {
+  const sessionResult = await requireSessionUser(request, env);
+  if (sessionResult.response) {
+    return sessionResult.response;
+  }
+
+  const topic = await buildNotificationRealtimeTopic(env, sessionResult.sessionUser.id);
+  return jsonResponse(200, { topic }, env, request);
+}
+
 async function loadSingleReview(env, reviewId, sessionUserId = null) {
   const reviewRows = await supabaseRequest(
     env,
@@ -2847,7 +2951,7 @@ async function handleCreateReview(request, env) {
   });
 
   const createdReview = await loadSingleReview(env, insertedRows?.[0]?.feed_id, sessionResult.sessionUser.id);
-  await createUserNotification(env, {
+  const createdNotification = await createUserNotification(env, {
     userId: sessionResult.sessionUser.id,
     actorUserId: sessionResult.sessionUser.id,
     type: 'review-created',
@@ -2858,6 +2962,15 @@ async function handleCreateReview(request, env) {
       placeId: place.id,
     },
   });
+  if (createdNotification?.notification_id) {
+    const notification = await loadNotificationById(env, createdNotification.notification_id);
+    if (notification) {
+      await publishNotificationEvent(env, sessionResult.sessionUser.id, 'notification.created', {
+        notification,
+        unreadCount: await countUnreadNotifications(env, sessionResult.sessionUser.id),
+      });
+    }
+  }
   return jsonResponse(201, createdReview, env, request);
 }
 
@@ -2945,7 +3058,7 @@ async function handleCreateComment(request, env, reviewId) {
   const reviewOwnerId = reviewRow.user_id;
 
   if (parentComment && parentComment.user_id && parentComment.user_id !== actorUserId) {
-    await createUserNotification(env, {
+    const createdNotification = await createUserNotification(env, {
       userId: parentComment.user_id,
       actorUserId,
       type: 'comment-reply',
@@ -2954,6 +3067,15 @@ async function handleCreateComment(request, env, reviewId) {
       reviewId,
       commentId: createdCommentId,
     });
+    if (createdNotification?.notification_id) {
+      const notification = await loadNotificationById(env, createdNotification.notification_id);
+      if (notification) {
+        await publishNotificationEvent(env, parentComment.user_id, 'notification.created', {
+          notification,
+          unreadCount: await countUnreadNotifications(env, parentComment.user_id),
+        });
+      }
+    }
   }
 
   if (
@@ -2961,7 +3083,7 @@ async function handleCreateComment(request, env, reviewId) {
     && reviewOwnerId !== actorUserId
     && (!parentComment || parentComment.user_id !== reviewOwnerId)
   ) {
-    await createUserNotification(env, {
+    const createdNotification = await createUserNotification(env, {
       userId: reviewOwnerId,
       actorUserId,
       type: 'review-comment',
@@ -2970,6 +3092,15 @@ async function handleCreateComment(request, env, reviewId) {
       reviewId,
       commentId: createdCommentId,
     });
+    if (createdNotification?.notification_id) {
+      const notification = await loadNotificationById(env, createdNotification.notification_id);
+      if (notification) {
+        await publishNotificationEvent(env, reviewOwnerId, 'notification.created', {
+          notification,
+          unreadCount: await countUnreadNotifications(env, reviewOwnerId),
+        });
+      }
+    }
   }
 
   const comments = (await loadSingleReview(env, reviewId, sessionResult.sessionUser.id))?.comments ?? [];
@@ -3302,7 +3433,7 @@ async function handleCreateUserRoute(request, env) {
 
   const routes = await loadCommunityRoutes(env, { ownerUserId: sessionResult.sessionUser.id, sessionUserId: sessionResult.sessionUser.id });
   const createdRoute = routes.find((route) => route.id === String(routeId)) ?? null;
-  await createUserNotification(env, {
+  const createdNotification = await createUserNotification(env, {
     userId: sessionResult.sessionUser.id,
     actorUserId: sessionResult.sessionUser.id,
     type: 'route-published',
@@ -3313,6 +3444,15 @@ async function handleCreateUserRoute(request, env) {
       travelSessionId,
     },
   });
+  if (createdNotification?.notification_id) {
+    const notification = await loadNotificationById(env, createdNotification.notification_id);
+    if (notification) {
+      await publishNotificationEvent(env, sessionResult.sessionUser.id, 'notification.created', {
+        notification,
+        unreadCount: await countUnreadNotifications(env, sessionResult.sessionUser.id),
+      });
+    }
+  }
   return jsonResponse(201, createdRoute, env, request);
 }
 
@@ -3339,6 +3479,10 @@ async function handleMarkNotificationRead(request, env, notificationId) {
         read_at: nowIso,
         updated_at: nowIso,
       }),
+    });
+    await publishNotificationEvent(env, sessionResult.sessionUser.id, 'notification.read', {
+      notificationId: String(notificationId),
+      unreadCount: await countUnreadNotifications(env, sessionResult.sessionUser.id),
     });
   }
 
@@ -3374,6 +3518,10 @@ async function handleMarkAllNotificationsRead(request, env) {
         }),
       },
     );
+    await publishNotificationEvent(env, sessionResult.sessionUser.id, 'notification.all-read', {
+      updated,
+      unreadCount: 0,
+    });
   }
 
   return jsonResponse(200, { updated }, env, request);
@@ -3396,6 +3544,10 @@ async function handleDeleteNotification(request, env, notificationId) {
   await supabaseRequest(env, `user_notification?notification_id=eq.${encodeFilterValue(notificationId)}`, {
     method: 'DELETE',
     headers: { Prefer: 'return=minimal' },
+  });
+  await publishNotificationEvent(env, sessionResult.sessionUser.id, 'notification.deleted', {
+    notificationId: String(notificationId),
+    unreadCount: await countUnreadNotifications(env, sessionResult.sessionUser.id),
   });
 
   return jsonResponse(200, {
@@ -3599,6 +3751,12 @@ async function routeRequest(request, env) {
   }
   if (request.method === "GET" && url.pathname === "/api/my/summary") {
     return handleMySummary(request, env);
+  }
+  if (request.method === "GET" && url.pathname === "/api/my/notifications") {
+    return handleMyNotifications(request, env);
+  }
+  if (request.method === "GET" && url.pathname === "/api/my/notifications/realtime-channel") {
+    return handleNotificationRealtimeChannel(request, env);
   }
   if (request.method === "GET" && url.pathname === "/api/my/comments") {
     return handleMyComments(request, env, url);

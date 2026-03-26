@@ -24,6 +24,8 @@ jobs:
       CLOUDFLARE_PAGES_PROJECT_NAME: daejeon-jamissue-pages
       PUBLIC_APP_BASE_URL: https://api.daejeon.jamissue.com
       PUBLIC_NAVER_MAP_CLIENT_ID: ${{ vars.PUBLIC_NAVER_MAP_CLIENT_ID || '' }}
+      PUBLIC_SUPABASE_URL: ${{ vars.PUBLIC_SUPABASE_URL || vars.APP_SUPABASE_URL || '' }}
+      PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY || secrets.APP_SUPABASE_ANON_KEY || '' }}
       CF_PAGES_BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || 'main' }}
     steps:
       - uses: actions/checkout@v4

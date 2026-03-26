@@ -56,6 +56,8 @@ async function readPublicEnv() {
   return {
     apiBaseUrl: values.PUBLIC_APP_BASE_URL || values.APP_BASE_URL || "http://localhost:8000",
     naverMapClientId: mapKey,
+    supabaseUrl: values.PUBLIC_SUPABASE_URL || values.APP_SUPABASE_URL || "",
+    supabaseAnonKey: values.PUBLIC_SUPABASE_ANON_KEY || values.APP_SUPABASE_ANON_KEY || "",
   };
 }
 

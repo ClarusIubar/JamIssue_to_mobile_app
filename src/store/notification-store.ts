@@ -1,11 +1,13 @@
 import { create } from 'zustand';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import {
   deleteNotification as deleteNotificationRequest,
   getMyNotifications,
-  getNotificationStreamUrl,
+  getMyNotificationsRealtimeChannel,
   markAllNotificationsRead as markAllNotificationsReadRequest,
   markNotificationRead as markNotificationReadRequest,
 } from '../api/client';
+import { getSupabaseClient, removeRealtimeChannel } from '../lib/supabase';
 import type { SessionUser, UserNotification } from '../types';
 
 type NotificationStore = {
@@ -14,7 +16,7 @@ type NotificationStore = {
   connected: boolean;
   status: 'idle' | 'loading' | 'ready' | 'error';
   error: string | null;
-  source: EventSource | null;
+  channel: RealtimeChannel | null;
   reconnectTimer: number | null;
   fetchNotifications: () => Promise<void>;
   connect: (sessionUser: SessionUser | null) => void;
@@ -41,7 +43,7 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   connected: false,
   status: 'idle',
   error: null,
-  source: null,
+  channel: null,
   reconnectTimer: null,
   async fetchNotifications() {
     set({ status: 'loading', error: null });
@@ -61,90 +63,117 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     }
   },
   connect(sessionUser) {
-    const currentSource = get().source;
+    const currentChannel = get().channel;
     if (!sessionUser) {
       get().disconnect();
       return;
     }
-    if (currentSource) {
+    if (currentChannel) {
       return;
     }
 
     clearReconnectTimer(get().reconnectTimer);
-    const source = new EventSource(getNotificationStreamUrl(), { withCredentials: true });
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      set({
+        status: 'error',
+        error: '실시간 알림 설정이 비어 있어요.',
+        connected: false,
+      });
+      return;
+    }
 
-    source.addEventListener('connected', () => {
-      set({ connected: true, status: 'ready', error: null });
-    });
+    void (async () => {
+      try {
+        const { topic } = await getMyNotificationsRealtimeChannel();
+        const channel = supabase.channel(topic);
 
-    source.addEventListener('notification.created', (event) => {
-      const payload = JSON.parse((event as MessageEvent<string>).data) as {
-        notification: UserNotification;
-        unreadCount: number;
-      };
-      set((state) => ({
-        notifications: [payload.notification, ...state.notifications.filter((item) => item.id !== payload.notification.id)],
-        unreadCount: payload.unreadCount,
-        connected: true,
-        status: 'ready',
-        error: null,
-      }));
-    });
+        channel.on('broadcast', { event: 'notification.created' }, ({ payload }) => {
+          const nextPayload = payload as {
+            notification: UserNotification;
+            unreadCount: number;
+          };
+          set((state) => ({
+            notifications: [nextPayload.notification, ...state.notifications.filter((item) => item.id !== nextPayload.notification.id)],
+            unreadCount: nextPayload.unreadCount,
+            connected: true,
+            status: 'ready',
+            error: null,
+          }));
+        });
 
-    source.addEventListener('notification.read', (event) => {
-      const payload = JSON.parse((event as MessageEvent<string>).data) as {
-        notificationId: string;
-        unreadCount: number;
-      };
-      set((state) => ({
-        notifications: state.notifications.map((notification) => (
-          notification.id === payload.notificationId
-            ? { ...notification, isRead: true }
-            : notification
-        )),
-        unreadCount: payload.unreadCount,
-        connected: true,
-      }));
-    });
+        channel.on('broadcast', { event: 'notification.read' }, ({ payload }) => {
+          const nextPayload = payload as {
+            notificationId: string;
+            unreadCount: number;
+          };
+          set((state) => ({
+            notifications: state.notifications.map((notification) => (
+              notification.id === nextPayload.notificationId
+                ? { ...notification, isRead: true }
+                : notification
+            )),
+            unreadCount: nextPayload.unreadCount,
+            connected: true,
+          }));
+        });
 
-    source.addEventListener('notification.all-read', (event) => {
-      const payload = JSON.parse((event as MessageEvent<string>).data) as { unreadCount: number };
-      set((state) => ({
-        notifications: state.notifications.map((notification) => ({ ...notification, isRead: true })),
-        unreadCount: payload.unreadCount,
-        connected: true,
-      }));
-    });
+        channel.on('broadcast', { event: 'notification.all-read' }, ({ payload }) => {
+          const nextPayload = payload as { unreadCount: number };
+          set((state) => ({
+            notifications: state.notifications.map((notification) => ({ ...notification, isRead: true })),
+            unreadCount: nextPayload.unreadCount,
+            connected: true,
+          }));
+        });
 
-    source.addEventListener('notification.deleted', (event) => {
-      const payload = JSON.parse((event as MessageEvent<string>).data) as {
-        notificationId: string;
-        unreadCount: number;
-      };
-      set((state) => ({
-        notifications: state.notifications.filter((notification) => notification.id !== payload.notificationId),
-        unreadCount: payload.unreadCount,
-        connected: true,
-      }));
-    });
+        channel.on('broadcast', { event: 'notification.deleted' }, ({ payload }) => {
+          const nextPayload = payload as {
+            notificationId: string;
+            unreadCount: number;
+          };
+          set((state) => ({
+            notifications: state.notifications.filter((notification) => notification.id !== nextPayload.notificationId),
+            unreadCount: nextPayload.unreadCount,
+            connected: true,
+          }));
+        });
 
-    source.onerror = () => {
-      source.close();
-      set({ source: null, connected: false });
-      const reconnectTimer = window.setTimeout(() => {
-        set({ reconnectTimer: null });
-        get().connect(sessionUser);
-      }, 3000);
-      set({ reconnectTimer });
-    };
-
-    set({ source, connected: false, error: null });
+        channel.subscribe((nextStatus) => {
+          if (nextStatus === 'SUBSCRIBED') {
+            set({ channel, connected: true, status: 'ready', error: null });
+            return;
+          }
+          if (nextStatus === 'CHANNEL_ERROR' || nextStatus === 'TIMED_OUT' || nextStatus === 'CLOSED') {
+            removeRealtimeChannel(channel);
+            set({ channel: null, connected: false });
+            const reconnectTimer = window.setTimeout(() => {
+              set({ reconnectTimer: null });
+              get().connect(sessionUser);
+            }, 3000);
+            set({ reconnectTimer });
+          }
+        });
+        set({
+          channel,
+          connected: false,
+          status: 'loading',
+          error: null,
+        });
+      } catch (error) {
+        set({
+          status: 'error',
+          error: error instanceof Error ? error.message : '알림 채널을 연결하지 못했어요.',
+          connected: false,
+        });
+      }
+    })();
   },
   disconnect() {
     clearReconnectTimer(get().reconnectTimer);
-    get().source?.close();
+    removeRealtimeChannel(get().channel);
     set({
-      source: null,
+      channel: null,
       reconnectTimer: null,
       connected: false,
       notifications: [],

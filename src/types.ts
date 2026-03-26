@@ -303,6 +303,10 @@ export interface NotificationDeleteResponse {
   deleted: boolean;
 }
 
+export interface NotificationRealtimeChannelResponse {
+  topic: string;
+}
+
 export interface ProfileUpdateRequest {
   nickname: string;
 }
