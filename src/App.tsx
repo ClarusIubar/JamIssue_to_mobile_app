@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-  claimStamp,
   getAuthSession,
   getMyCommentsPage,
   getProviderLoginUrl,
@@ -22,22 +21,18 @@ import {
 import { useAppDataState } from './hooks/useAppDataState';
 import { useAppBootstrapLifecycle } from './hooks/useAppBootstrapLifecycle';
 import { useAppFeedbackEffects } from './hooks/useAppFeedbackEffects';
+import { useAppMapActions } from './hooks/useAppMapActions';
 import { useAppNavigationHelpers } from './hooks/useAppNavigationHelpers';
 import { useNotificationLifecycle } from './hooks/useNotificationLifecycle';
 import { useAppReviewActions } from './hooks/useAppReviewActions';
 import { useAppShellNavigation } from './hooks/useAppShellNavigation';
 import { useAppTabDataLoaders } from './hooks/useAppTabDataLoaders';
 import { useAppViewModels } from './hooks/useAppViewModels';
-import { getCurrentDevicePosition } from './lib/geolocation';
 import { useAppUIStore } from './store/app-ui-store';
 import { useNotificationStore } from './store/notification-store';
-import {
-  formatDistanceMeters,
-} from './lib/visits';
 import type {
   ApiStatus,
   Category,
-  Place,
   Tab,
   UserNotification,
 } from './types';
@@ -390,62 +385,26 @@ export default function App() {
     reportBackgroundError,
   });
 
-  async function refreshCurrentPosition(shouldFocusMap: boolean) {
-    setMapLocationStatus('loading');
-    setMapLocationMessage('현재 위치를 확인하고 있어요.');
-
-    try {
-      const nextPosition = await getCurrentDevicePosition();
-      setCurrentPosition({ latitude: nextPosition.latitude, longitude: nextPosition.longitude });
-      setMapLocationStatus('ready');
-      setMapLocationMessage(`현재 위치를 확인했어요. 위치 정확도는 약 ${formatDistanceMeters(nextPosition.accuracyMeters)}예요.`);
-      if (shouldFocusMap) {
-        setMapLocationFocusKey((current) => current + 1);
-      }
-    } catch (error) {
-      setCurrentPosition(null);
-      setMapLocationStatus('error');
-      setMapLocationMessage(formatErrorMessage(error));
-    }
-  }
+  const {
+    refreshCurrentPosition,
+    handleClaimStamp,
+  } = useAppMapActions({
+    sessionUser,
+    setCurrentPosition,
+    setMapLocationStatus,
+    setMapLocationMessage,
+    setMapLocationFocusKey,
+    setNotice,
+    setStampState,
+    setStampActionStatus,
+    goToTab,
+    commitRouteState,
+    refreshMyPageForUser,
+    formatErrorMessage,
+  });
 
   function startProviderLogin(provider: 'naver' | 'kakao') {
     window.location.assign(getProviderLoginUrl(provider, getLoginReturnUrl()));
-  }
-
-  async function handleClaimStamp(place: Place) {
-    if (!sessionUser) {
-      goToTab('my');
-      setNotice('로그인하면 스탬프를 찍고 피드도 남길 수 있어요.');
-      return;
-    }
-
-    setStampActionStatus('loading');
-    try {
-      const nextPosition = await getCurrentDevicePosition();
-      setCurrentPosition({ latitude: nextPosition.latitude, longitude: nextPosition.longitude });
-      const nextStampState = await claimStamp({
-        placeId: place.id,
-        latitude: nextPosition.latitude,
-        longitude: nextPosition.longitude,
-      });
-      setStampState(nextStampState);
-        setNotice(`${place.name}에서 오늘 스탬프를 찍었어요.`);
-      commitRouteState(
-        {
-          tab: 'map',
-          placeId: place.id,
-          festivalId: null,
-          drawerState: 'full',
-        },
-        'replace',
-      );
-      await refreshMyPageForUser(sessionUser);
-    } catch (error) {
-      setNotice(formatErrorMessage(error));
-    } finally {
-      setStampActionStatus('ready');
-    }
   }
 
   const {
