@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Review Feed Density Sample</title>
+    <style>
+      @font-face {
+        font-family: "Pretendard";
+        src: url("../src/assets/fonts/Pretendard-Regular.woff2") format("woff2");
+        font-weight: 400;
+      }
+
+      @font-face {
+        font-family: "Pretendard";
+        src: url("../src/assets/fonts/Pretendard-SemiBold.woff2") format("woff2");
+        font-weight: 600;
+      }
+
+      @font-face {
+        font-family: "Pretendard";
+        src: url("../src/assets/fonts/Pretendard-ExtraBold.woff2") format("woff2");
+        font-weight: 800;
+      }
+
+      :root {
+        --ink: #4a3140;
+        --muted: #77546c;
+        --pink: #ff7fab;
+        --pink-deep: #ff5d92;
+        --line: rgba(255, 235, 243, 0.96);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 20px;
+        background:
+          radial-gradient(circle at top left, rgba(255, 240, 246, 0.9), transparent 48%),
+          linear-gradient(180deg, #fffafc 0%, #fff7fa 100%);
+        font-family: "Pretendard", "Segoe UI", sans-serif;
+        color: var(--ink);
+      }
+
+      .frame {
+        width: min(100%, 390px);
+        margin: 0 auto;
+      }
+
+      .review-card {
+        display: grid;
+        gap: 10px;
+        padding: 16px;
+        border-radius: 26px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 14px 30px rgba(255, 143, 183, 0.12);
+      }
+
+      .review-card__top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .review-card__title-row {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .review-card__title {
+        margin: 0;
+        font-size: 18px;
+        line-height: 1.18;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+
+      .review-card__mood-inline {
+        color: rgba(216, 79, 134, 0.88);
+        font-size: 11px;
+        line-height: 1.2;
+        font-weight: 700;
+      }
+
+      .review-card__corner-meta {
+        margin: 2px 0 0;
+        color: rgba(93, 77, 101, 0.72);
+        font-size: 11px;
+        line-height: 1.35;
+        font-weight: 500;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      .review-card__tag-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: -2px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 24px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-size: 10px;
+        line-height: 1.2;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+
+      .pill--visit,
+      .pill--soft {
+        background: rgba(255, 240, 246, 0.92);
+        border: 1px solid rgba(255, 127, 168, 0.18);
+        color: #c84d7d;
+      }
+
+      .review-card__image-frame {
+        aspect-ratio: 4 / 3;
+        overflow: hidden;
+        border-radius: 20px;
+        border: 1px solid rgba(255, 176, 201, 0.16);
+        background:
+          linear-gradient(180deg, rgba(85, 54, 66, 0.16), rgba(85, 54, 66, 0.02)),
+          radial-gradient(circle at 38% 28%, rgba(255, 212, 224, 0.85), transparent 24%),
+          linear-gradient(135deg, #f3d7e1 0%, #d6b8c5 30%, #e7d9d2 56%, #d7b9b0 100%);
+      }
+
+      .review-card__body {
+        margin: 0;
+        color: rgba(84, 57, 73, 0.96);
+        font-size: 14px;
+        line-height: 1.58;
+        word-break: keep-all;
+      }
+
+      .review-card__actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 2px;
+      }
+
+      .review-card__action-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .review-action-button,
+      .review-link-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        font-family: inherit;
+        font-weight: 700;
+      }
+
+      .review-action-button {
+        min-height: 36px;
+        padding: 8px 12px;
+        gap: 5px;
+        border: 1px solid rgba(255, 196, 215, 0.42);
+        background: rgba(255, 248, 251, 0.96);
+        color: rgba(119, 84, 108, 0.9);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+      }
+
+      .review-action-button.is-active {
+        color: #ff5d92;
+        border-color: rgba(255, 127, 168, 0.34);
+        background: linear-gradient(180deg, #fff4f8, #ffeef4);
+      }
+
+      .review-action-button__icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+      }
+
+      .review-action-button__label {
+        font-size: 12px;
+      }
+
+      .review-action-button__svg {
+        width: 15px;
+        height: 15px;
+        display: block;
+      }
+
+      .review-link-button {
+        min-height: 38px;
+        padding: 8px 14px;
+        border: 1px solid rgba(255, 196, 215, 0.46);
+        background: rgba(255, 255, 255, 0.96);
+        color: var(--muted);
+        text-decoration: none;
+      }
+
+      .guide {
+        width: min(100%, 390px);
+        margin: 0 auto 12px;
+        color: rgba(119, 84, 108, 0.82);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <p class="guide">시안: 태그 위치는 유지하고, 카드 밀도와 하단 액션만 더 인스타스럽게 정리한 버전</p>
+    <main class="frame">
+      <article class="review-card">
+        <div class="review-card__top">
+          <div class="review-card__title-block">
+            <div class="review-card__title-row">
+              <h1 class="review-card__title">슬리피타운</h1>
+              <span class="review-card__mood-inline">친구랑</span>
+            </div>
+          </div>
+          <p class="review-card__corner-meta">킴노현 · 03. 27. 12:31</p>
+        </div>
+
+        <div class="review-card__tag-row">
+          <span class="pill pill--visit">2번째 방문</span>
+          <span class="pill pill--soft">친구 추천</span>
+        </div>
+
+        <div class="review-card__image-frame" aria-hidden="true"></div>
+
+        <p class="review-card__body">두 번째 방문 했어요~!!! 낮보다 밤 분위기가 더 좋아서 다시 가도 만족스러웠고, 같이 간 친구도 좋아했어요.</p>
+
+        <div class="review-card__actions">
+          <div class="review-card__action-group">
+            <span class="review-action-button is-active">
+              <span class="review-action-button__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" class="review-action-button__svg">
+                  <path d="M12 21s-6.716-4.309-9.193-8.19C1.25 10.387 2.17 6.9 5.41 5.61c1.98-.788 4.183-.145 5.59 1.495 1.408-1.64 3.611-2.283 5.59-1.495 3.24 1.29 4.16 4.777 2.603 7.2C18.716 16.691 12 21 12 21Z" fill="currentColor" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+              </span>
+              <span class="review-action-button__label">2</span>
+            </span>
+            <span class="review-action-button">
+              <span class="review-action-button__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" class="review-action-button__svg">
+                  <path d="M6.5 5.5h11A2.5 2.5 0 0 1 20 8v6A2.5 2.5 0 0 1 17.5 16.5H11l-4.5 3.5v-3.5h0A2.5 2.5 0 0 1 4 14V8a2.5 2.5 0 0 1 2.5-2.5Z" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"></path>
+                  <path d="M8.75 10.75h.5M12 10.75h.5M15.25 10.75h.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+                </svg>
+              </span>
+              <span class="review-action-button__label">1</span>
+            </span>
+          </div>
+          <span class="review-link-button">이 장소 보기</span>
+        </div>
+      </article>
+    </main>
+  </body>
+</html>

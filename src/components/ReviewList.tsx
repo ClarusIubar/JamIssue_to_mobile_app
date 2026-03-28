@@ -41,13 +41,14 @@ function CommentIcon() {
   return (
     <svg viewBox="0 0 24 24" className="review-action-button__svg" aria-hidden="true">
       <path
-        d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-7Z"
+        d="M6.5 5.5h11A2.5 2.5 0 0 1 20 8v6A2.5 2.5 0 0 1 17.5 16.5H11l-4.5 3.5v-3.5h0A2.5 2.5 0 0 1 4 14V8a2.5 2.5 0 0 1 2.5-2.5Z"
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.9"
+        strokeWidth="1.85"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+      <path d="M8.75 10.75h.5M12 10.75h.5M15.25 10.75h.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -228,7 +229,7 @@ export function ReviewList({
         <article
           key={review.id}
           data-review-id={review.id}
-          className={review.id === highlightedReviewId ? 'review-card review-card--highlighted' : 'review-card'}
+          className={review.id === highlightedReviewId ? 'review-card review-card--feed review-card--highlighted' : 'review-card review-card--feed'}
         >
           <div className="review-card__top review-card__top--feed">
             <div className="review-card__title-block review-card__title-block--feed">
@@ -250,8 +251,8 @@ export function ReviewList({
 
           <p className="review-card__body">{review.body}</p>
 
-          <div className="review-card__actions">
-            <div className="review-card__action-group">
+          <div className="review-card__actions review-card__actions--feed">
+            <div className="review-card__action-group review-card__action-group--feed">
               <button
                 type="button"
                 className={review.likedByMe ? 'review-action-button is-active' : 'review-action-button'}
