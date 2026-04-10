@@ -86,6 +86,8 @@ from .services.page_service import (
     read_place_service,
     read_places_service,
     read_reviews_service,
+)
+from .services.stamp_service import (
     read_stamps_service,
     toggle_stamp_service,
 )
