@@ -1,11 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   buildRequestHeaders,
   parseRuntimeConfig,
   resolveApiBaseUrl,
 } from '../../scripts/run-smoke-checks.mjs';
-import { getProtectedAuthHeaders } from '../../scripts/run-protected-smoke-checks.mjs';
+import {
+  createProtectedSmokeChecks,
+  getProtectedAuthHeaders,
+  getProtectedSmokeSkipReason,
+  isProtectedSmokeEnabled,
+  PROTECTED_SMOKE_ENDPOINTS,
+  runProtectedSmokeSuite,
+} from '../../scripts/run-protected-smoke-checks.mjs';
 
 describe('run-smoke-checks helpers', () => {
   it('parses runtime app config from the bootstrap script', () => {
@@ -68,5 +75,53 @@ describe('run-smoke-checks helpers', () => {
     });
 
     delete process.env.SMOKE_AUTH_BEARER_TOKEN;
+  });
+
+  it('throws when the protected smoke token is missing', () => {
+    delete process.env.SMOKE_AUTH_BEARER_TOKEN;
+
+    expect(() => getProtectedAuthHeaders()).toThrow('SMOKE_AUTH_BEARER_TOKEN is required for protected smoke checks');
+  });
+
+  it('defines the protected smoke endpoint contract', () => {
+    process.env.SMOKE_AUTH_BEARER_TOKEN = 'token-123';
+
+    expect(createProtectedSmokeChecks({ apiBaseUrl: 'https://api.example.com' }).map((check) => check.name)).toEqual([
+      'api-auth-me-authenticated',
+      'api-my-summary-authenticated',
+      'api-my-notifications-authenticated',
+    ]);
+
+    delete process.env.SMOKE_AUTH_BEARER_TOKEN;
+  });
+
+  it('reports whether protected smoke is enabled from the token env', () => {
+    expect(isProtectedSmokeEnabled({ SMOKE_AUTH_BEARER_TOKEN: 'token-123' })).toBe(true);
+    expect(isProtectedSmokeEnabled({ SMOKE_AUTH_BEARER_TOKEN: '' })).toBe(false);
+  });
+
+  it('describes why protected smoke is skipped when the token is missing', () => {
+    expect(getProtectedSmokeSkipReason({ SMOKE_AUTH_BEARER_TOKEN: '' })).toBe('SMOKE_AUTH_BEARER_TOKEN is not configured');
+    expect(getProtectedSmokeSkipReason({ SMOKE_AUTH_BEARER_TOKEN: 'token-123' })).toBeNull();
+  });
+
+  it('skips protected smoke without trying to load runtime config when the token is missing', async () => {
+    const loadRuntimeConfigImpl = vi.fn();
+    const runSmokeSuiteImpl = vi.fn();
+
+    const result = await runProtectedSmokeSuite({
+      env: { SMOKE_AUTH_BEARER_TOKEN: '' },
+      loadRuntimeConfigImpl,
+      runSmokeSuiteImpl,
+    });
+
+    expect(result).toMatchObject({
+      suite: 'protected',
+      skipped: true,
+      reason: 'SMOKE_AUTH_BEARER_TOKEN is not configured',
+      endpoints: PROTECTED_SMOKE_ENDPOINTS.map((endpoint) => endpoint.name),
+    });
+    expect(loadRuntimeConfigImpl).not.toHaveBeenCalled();
+    expect(runSmokeSuiteImpl).not.toHaveBeenCalled();
   });
 });
