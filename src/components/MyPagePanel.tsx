@@ -3,6 +3,9 @@ import { useScrollRestoration } from '../hooks/useScrollRestoration';
 import { useAutoLoadMore } from '../hooks/useAutoLoadMore';
 import { MyCommentsTabSection } from './my-page/MyCommentsTabSection';
 import { MyFeedTabSection } from './my-page/MyFeedTabSection';
+import { MyPageAccountSection } from './my-page/MyPageAccountSection';
+import { MyPageOverviewSection } from './my-page/MyPageOverviewSection';
+import { MyPagePrimaryTabs } from './my-page/MyPagePrimaryTabs';
 import { MyRoutesTabSection } from './my-page/MyRoutesTabSection';
 import { MyStampTabSection } from './my-page/MyStampTabSection';
 import { ProviderButtons } from './ProviderButtons';
@@ -164,22 +167,13 @@ export function MyPagePanel({
           </button>
         </section>
       )}
-      <section className="sheet-card stack-gap account-action-card">
-        <div className="section-title-row section-title-row--tight">
-          <div>
-            <p className="eyebrow">ACCOUNT</p>
-            <h3>계정 관리</h3>
-          </div>
-        </div>
-        <div className="account-action-row">
-          <button type="button" className={showSettings ? 'secondary-button is-complete' : 'secondary-button'} onClick={() => setShowSettings((current) => !current)}>
-            {showSettings ? '설정 닫기' : '설정 열기'}
-          </button>
-          <button type="button" className="secondary-button" onClick={() => void onLogout()} disabled={isLoggingOut}>
-            {isLoggingOut ? '정리 중' : '로그아웃'}
-          </button>
-        </div>
-      </section>
+      <MyPageAccountSection
+        sessionUser={sessionUser}
+        isLoggingOut={isLoggingOut}
+        showSettings={showSettings}
+        onToggleSettings={() => setShowSettings((current) => !current)}
+        onLogout={() => void onLogout()}
+      />
       {(showSettings || !sessionUser.profileCompletedAt) && (
         <section className="sheet-card stack-gap settings-card">
           <div className="settings-card__header">
@@ -209,81 +203,21 @@ export function MyPagePanel({
 
       {myPage && (
         <>
-          <section className="sheet-card stack-gap">
-            <div className="my-stats-grid">
-              <article>
-                <strong>{myPage.stats.uniquePlaceCount}/{myPage.stats.totalPlaceCount}</strong>
-                <span>방문한 고유 명소</span>
-              </article>
-              <article>
-                <strong>{myPage.stats.stampCount}</strong>
-                <span>누적 스탬프 수</span>
-              </article>
-            </div>
-            {myPage.stats.totalPlaceCount > 0 && (
-              <div className="my-visit-progress">
-                <div className="my-visit-progress__bar">
-                  <div className="my-visit-progress__fill" style={{ width: `${visitPct}%` }} />
-                </div>
-                <span className="my-visit-progress__label">{visitPct}% 달성</span>
-              </div>
-            )}
-            <button type="button" className="secondary-button" onClick={() => setShowVisitedDetail((current) => !current)}>
-              {showVisitedDetail ? '방문 상세 닫기' : '방문 상세 보기'}
-            </button>
-            {showVisitedDetail && (
-              <div className="my-visited-grid">
-                <div>
-                  <div className="my-visited-section-header">
-                    <strong>가본 곳</strong>
-                    <span className="counter-pill">{myPage.visitedPlaces.length}곳</span>
-                  </div>
-                  <div className="chip-row compact-gap">
-                    {myPage.visitedPlaces.map((place) => (
-                      <button key={place.id} type="button" className="soft-tag soft-tag--button" onClick={() => onOpenPlace(place.id)}>
-                        {place.name}
-                      </button>
-                    ))}
-                    {myPage.visitedPlaces.length === 0 && <p className="empty-copy">아직 방문한 곳이 없어요.</p>}
-                  </div>
-                </div>
-                <div>
-                  <div className="my-visited-section-header">
-                    <strong>아직 못 가본 곳</strong>
-                    <span className="counter-pill counter-pill--muted">{myPage.unvisitedPlaces.length}곳</span>
-                  </div>
-                  <div className="chip-row compact-gap">
-                    {myPage.unvisitedPlaces.map((place) => (
-                      <button key={place.id} type="button" className="soft-tag soft-tag--button is-muted" onClick={() => onOpenPlace(place.id)}>
-                        {place.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </section>
+          <MyPageOverviewSection
+            uniquePlaceCount={myPage.stats.uniquePlaceCount}
+            totalPlaceCount={myPage.stats.totalPlaceCount}
+            stampCount={myPage.stats.stampCount}
+            visitPct={visitPct}
+            visitedPlaces={myPage.visitedPlaces}
+            unvisitedPlaces={myPage.unvisitedPlaces}
+            showVisitedDetail={showVisitedDetail}
+            onToggleVisitedDetail={() => setShowVisitedDetail((current) => !current)}
+            onOpenPlace={onOpenPlace}
+            travelSessions={myPage.travelSessions}
+          />
 
           <section className="sheet-card stack-gap">
-            <div className={sessionUser.isAdmin ? 'chip-row compact-gap my-page-primary-tabs my-page-primary-tabs--admin' : 'chip-row compact-gap my-page-primary-tabs'}>
-              <button type="button" className={activeTab === 'stamps' ? 'chip is-active' : 'chip'} onClick={() => onChangeTab('stamps')}>
-                {'\uC2A4\uD0EC\uD504'}
-              </button>
-              <button type="button" className={activeTab === 'feeds' ? 'chip is-active' : 'chip'} onClick={() => onChangeTab('feeds')}>
-                {'\uD53C\uB4DC'}
-              </button>
-              <button type="button" className={activeTab === 'comments' ? 'chip is-active' : 'chip'} onClick={() => onChangeTab('comments')}>
-                {'\uB313\uAE00'}
-              </button>
-              <button type="button" className={activeTab === 'routes' ? 'chip is-active' : 'chip'} onClick={() => onChangeTab('routes')}>
-                {'\uCF54\uC2A4'}
-              </button>
-              {sessionUser.isAdmin && (
-                <button type="button" className={activeTab === 'admin' ? 'chip is-active' : 'chip'} onClick={() => onChangeTab('admin')}>
-                  {'\uAD00\uB9AC'}
-                </button>
-              )}
-            </div>
+            <MyPagePrimaryTabs activeTab={activeTab} isAdmin={sessionUser.isAdmin} onChangeTab={onChangeTab} />
 
             {activeTab === 'stamps' && (
               <MyStampTabSection
