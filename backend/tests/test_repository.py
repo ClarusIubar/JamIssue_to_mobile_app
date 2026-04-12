@@ -1,6 +1,7 @@
 ﻿from datetime import timedelta
 from pathlib import Path
 
+import pytest
 from sqlalchemy import create_engine, event, func, select
 from sqlalchemy.orm import sessionmaker
 
@@ -183,7 +184,6 @@ def test_review_allows_different_places_on_same_day(tmp_path: Path):
     second_stamp_state = claim_stamp_for(session, 'user-1', 'expo-bridge')
 
     # 같은 날이더라도 다른 장소라면 피드 작성이 허용되어야 함
-    blocked = False
     try:
         create_review(
             session,
@@ -191,10 +191,8 @@ def test_review_allows_different_places_on_same_day(tmp_path: Path):
             'user-1',
             '민서',
         )
-    except ValueError:
-        blocked = True
-
-    assert blocked is False
+    except ValueError as exc:  # pragma: no cover - defensive branch for regression readability
+        pytest.fail(f'리뷰 작성이 차단되면 안 됩니다: {exc}')
 
 
 def test_review_is_limited_to_one_per_place_per_day(tmp_path: Path):
@@ -212,34 +210,25 @@ def test_review_is_limited_to_one_per_place_per_day(tmp_path: Path):
     second_stamp_state = claim_stamp_for(session, 'user-1', 'hanbat-forest')
 
     # 같은 날, 같은 장소에서 다시 피드를 작성하면 차단되어야 함
-    blocked = False
-    try:
+    with pytest.raises(ValueError):
         create_review(
             session,
             ReviewCreate(placeId='hanbat-forest', stampId=stamp_id_for_place(second_stamp_state, 'hanbat-forest'), body='한밭 숲 중복 피드.', mood='설렘', imageUrl=None),
             'user-1',
             '민서',
         )
-    except ValueError:
-        blocked = True
-
-    assert blocked is True
 
 
 def test_stamp_requires_real_distance_and_same_day_dedup(tmp_path: Path):
     session = build_session(tmp_path)
     load_seed_data(session)
 
-    blocked = False
-    try:
+    with pytest.raises(PermissionError):
         toggle_stamp(session, 'user-1', 'hanbat-forest', 37.0, 127.0, 120)
-    except PermissionError:
-        blocked = True
 
     first_state = toggle_stamp(session, 'user-1', 'hanbat-forest', 36.3671, 127.3886, 120)
     second_state = toggle_stamp(session, 'user-1', 'hanbat-forest', 36.3671, 127.3886, 120)
 
-    assert blocked is True
     assert 'hanbat-forest' in first_state.collected_place_ids
     assert len(first_state.logs) == 1
     assert len(second_state.logs) == 1
@@ -551,13 +540,8 @@ def test_profile_update_rejects_duplicate_nickname(tmp_path: Path):
     first = upsert_social_user(session, provider='naver', provider_user_id='naver-111', nickname='민서', email='a@example.com')
     second = upsert_social_user(session, provider='kakao', provider_user_id='kakao-222', nickname='가은', email='b@example.com')
 
-    error = None
-    try:
+    with pytest.raises(ValueError, match='이미 사용 중인 닉네임이에요.'):
         update_user_profile(session, second.user_id, ProfileUpdateRequest(nickname=first.nickname))
-    except ValueError as exc:
-        error = str(exc)
-
-    assert error == '이미 사용 중인 닉네임이에요.'
 
 
 def test_social_signup_generates_distinct_duplicate_nickname(tmp_path: Path):
@@ -596,11 +580,8 @@ def test_legacy_stamp_blocks_same_day_duplicate(tmp_path: Path):
 
     legacy_toggle_stamp(session, 'user-1', 'hanbat-forest', 36.3671, 127.3886, 120)
 
-    blocked = False
-    try:
+    with pytest.raises(ValueError, match='이미 오늘 스탬프를 획득했습니다.'):
         legacy_toggle_stamp(session, 'user-1', 'hanbat-forest', 36.3671, 127.3886, 120)
-    except ValueError as exc:
-        blocked = '이미 오늘 스탬프를 획득했습니다.' in str(exc)
 
     today = to_seoul_date()
     today_stamp_count = session.scalar(
@@ -609,5 +590,4 @@ def test_legacy_stamp_blocks_same_day_duplicate(tmp_path: Path):
             UserStamp.stamp_date == today,
         )
     )
-    assert blocked is True
     assert today_stamp_count == 1

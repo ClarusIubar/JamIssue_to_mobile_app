@@ -1,6 +1,6 @@
 ﻿from pathlib import Path
 
-import app.storage as storage_module
+from app import storage as storage_module
 from app.config import Settings
 from app.storage import (
     FileTooLargeError,
