@@ -20,21 +20,21 @@ def _nickname_exists(db: Session, nickname: str, *, exclude_user_id: str | None 
 def ensure_unique_nickname(db: Session, nickname: str, *, exclude_user_id: str | None = None) -> str:
     normalized = nickname.strip()
     if len(normalized) < 2:
-        raise ValueError("?됰꽕?꾩? ??湲???댁긽?쇰줈 ?곸뼱 二쇱꽭??")
+        raise ValueError("닉네임은 두 글자 이상으로 적어 주세요.")
     if _nickname_exists(db, normalized, exclude_user_id=exclude_user_id):
-        raise ValueError("?대? ?ъ슜 以묒씤 ?됰꽕?꾩씠?먯슂.")
+        raise ValueError("이미 사용 중인 닉네임이에요.")
     return normalized
 
 
 def build_unique_social_nickname(db: Session, nickname: str, *, exclude_user_id: str | None = None) -> str:
-    base = nickname.strip() or "?대쫫 ?놁쓬"
+    base = nickname.strip() or "이름 없음"
     if not _nickname_exists(db, base, exclude_user_id=exclude_user_id):
         return base
     for suffix in range(2, 10000):
         candidate = f"{base[:95]}{suffix}"
         if not _nickname_exists(db, candidate, exclude_user_id=exclude_user_id):
             return candidate
-    raise ValueError("?ъ슜 媛?ν븳 ?됰꽕?꾩쓣 留뚮뱾 ???놁뼱??")
+    raise ValueError("사용 가능한 닉네임을 만들 수 없어요.")
 
 
 def upsert_social_user(
@@ -101,7 +101,7 @@ def upsert_social_user(
         db.commit()
     except IntegrityError as error:
         db.rollback()
-        raise ValueError("?대? ?ъ슜 以묒씤 ?됰꽕?꾩씠?먯슂.") from error
+        raise ValueError("이미 사용 중인 닉네임이에요.") from error
     db.refresh(user)
     return user
 
@@ -117,7 +117,7 @@ def link_social_identity(
 ) -> User:
     user = db.get(User, user_id)
     if not user:
-        raise ValueError("?곌껐??湲곗〈 怨꾩젙??李얠쓣 ???놁뼱??")
+        raise ValueError("연결할 기존 계정을 찾을 수 없어요.")
 
     now = utcnow_naive()
     existing_identity = db.scalars(
@@ -125,7 +125,7 @@ def link_social_identity(
     ).first()
     if existing_identity:
         if existing_identity.user_id != user_id:
-            raise ValueError("?대? ?ㅻⅨ 怨꾩젙???곌껐??濡쒓렇???섎떒?댁뿉??")
+            raise ValueError("이미 다른 계정에 연결된 로그인 수단이에요.")
         if existing_identity.email != email or existing_identity.profile_image != profile_image:
             existing_identity.email = email
             existing_identity.profile_image = profile_image
@@ -138,7 +138,7 @@ def link_social_identity(
         select(UserIdentity).where(UserIdentity.user_id == user_id, UserIdentity.provider == provider)
     ).first()
     if provider_slot:
-        raise ValueError("?대? 媛숈? ?쒓났?먯쓽 怨꾩젙???곌껐?섏뼱 ?덉뼱??")
+        raise ValueError("이미 같은 제공자의 계정이 연결되어 있어요.")
 
     if email and not user.email:
         user.email = email
@@ -161,7 +161,7 @@ def link_social_identity(
 
 
 def upsert_naver_user(db: Session, profile: NaverProfile) -> User:
-    nickname = profile.nickname or profile.name or "?대쫫 ?놁쓬"
+    nickname = profile.nickname or profile.name or "이름 없음"
     return upsert_social_user(
         db,
         provider="naver",
@@ -186,7 +186,7 @@ def link_naver_identity(db: Session, user_id: str, profile: NaverProfile) -> Use
 def update_user_profile(db: Session, user_id: str, payload: ProfileUpdateRequest) -> User:
     user = db.get(User, user_id)
     if not user:
-        raise ValueError("?ъ슜???뺣낫瑜?李얠쓣 ???놁뼱??")
+        raise ValueError("사용자 정보를 찾을 수 없어요.")
 
     nickname = ensure_unique_nickname(db, payload.nickname, exclude_user_id=user_id)
     now = utcnow_naive()
@@ -198,6 +198,6 @@ def update_user_profile(db: Session, user_id: str, payload: ProfileUpdateRequest
         db.commit()
     except IntegrityError as error:
         db.rollback()
-        raise ValueError("?대? ?ъ슜 以묒씤 ?됰꽕?꾩씠?먯슂.") from error
+        raise ValueError("이미 사용 중인 닉네임이에요.") from error
     db.refresh(user)
     return user
