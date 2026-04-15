@@ -191,9 +191,9 @@ API:
 
 완전히 다시 넣어야 할 때는 아래 순서를 따릅니다.
 
-1. [20260323_reset_all_app_data.sql](/D:/JamIssue/backend/sql/migrations/20260323_reset_all_app_data.sql)
-2. [20260323_add_place_images_bucket.sql](/D:/JamIssue/backend/sql/migrations/20260323_add_place_images_bucket.sql)
-3. [20260323_seed_sample_places.sql](/D:/JamIssue/backend/sql/migrations/20260323_seed_sample_places.sql)
+1. [20260323_reset_all_app_data.sql](../backend/sql/migrations/20260323_reset_all_app_data.sql)
+2. [20260323_add_place_images_bucket.sql](../backend/sql/migrations/20260323_add_place_images_bucket.sql)
+3. [20260323_seed_sample_places.sql](../backend/sql/migrations/20260323_seed_sample_places.sql)
 4. 이미지 업로드 스크립트 실행
 
 좌표 보정이 포함된 최신 정본은 이미 `20260323_seed_sample_places.sql`에 반영돼 있습니다.

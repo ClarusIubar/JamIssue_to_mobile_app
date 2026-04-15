@@ -130,9 +130,9 @@
   - `/api/reviews`
 
 ## 관련 문서
-- [screen-spec.md](/D:/JamIssue/docs/screen-spec.md)
-- [community-routes.md](/D:/JamIssue/docs/community-routes.md)
-- [account-identity-schema.md](/D:/JamIssue/docs/account-identity-schema.md)
-- [growgardens-deploy-runbook.md](/D:/JamIssue/docs/growgardens-deploy-runbook.md)
+- [screen-spec.md](screen-spec.md)
+- [community-routes.md](community-routes.md)
+- [account-identity-schema.md](account-identity-schema.md)
+- [growgardens-deploy-runbook.md](growgardens-deploy-runbook.md)
 
-- [search-recommendation-scope.md](/D:/JamIssue/docs/search-recommendation-scope.md)
+- [search-recommendation-scope.md](search-recommendation-scope.md)
