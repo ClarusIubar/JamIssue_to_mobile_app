@@ -41,7 +41,7 @@ def list_courses(db: Session, mood: CourseMood | None = None) -> list[CourseOut]
         .options(joinedload(Course.course_places).joinedload(CoursePlace.place))
         .order_by(Course.display_order.asc(), Course.course_id.asc())
     )
-    if mood and mood != "?袁⑷퍥":
+    if mood and mood != "전체":
         stmt = stmt.where(Course.mood == mood)
     return [to_course_out(course) for course in db.scalars(stmt).unique().all()]
 
