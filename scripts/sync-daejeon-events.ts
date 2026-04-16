@@ -1,6 +1,7 @@
-import { SEARCH_URL, SOURCE_NAME } from './daejeon-event-sync/constants';
 import { collectEvents } from './daejeon-event-sync/fetch';
-import type { EventSyncRange, ImportedEvent } from './daejeon-event-sync/types';
+import { logCollectedEvents, logUploadResult } from './daejeon-event-sync/report';
+import type { EventSyncRange } from './daejeon-event-sync/types';
+import { uploadEvents } from './daejeon-event-sync/upload';
 
 function parseArgs(argv: string[]) {
   const options = {
@@ -64,38 +65,6 @@ function getDefaultRange(): EventSyncRange {
   };
 }
 
-async function uploadEvents(items: ImportedEvent[], range: EventSyncRange) {
-  const importUrl = String(process.env.PUBLIC_EVENT_IMPORT_URL || '').trim();
-  const token = String(process.env.EVENT_IMPORT_TOKEN || '').trim();
-
-  if (!importUrl) {
-    throw new Error('PUBLIC_EVENT_IMPORT_URL is required.');
-  }
-  if (!token) {
-    throw new Error('EVENT_IMPORT_TOKEN is required.');
-  }
-
-  const response = await fetch(importUrl, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json; charset=utf-8',
-    },
-    body: JSON.stringify({
-      sourceName: SOURCE_NAME,
-      sourceUrl: `${SEARCH_URL}&beginDt=${range.from}&endDt=${range.to}`,
-      importedAt: new Date().toISOString(),
-      items,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to upload imported events (${response.status}): ${await response.text()}`);
-  }
-
-  return response.json();
-}
-
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const defaultRange = getDefaultRange();
@@ -104,19 +73,15 @@ async function main() {
     to: options.to || defaultRange.to,
   };
 
-  const { pageCount, items } = await collectEvents(range);
-  console.log(`Collected ${items.length} unique events across ${pageCount} pages for ${range.from}..${range.to}.`);
-
-  if (items[0]) {
-    console.log(`First event: ${items[0].startsAt.slice(0, 10)} ${items[0].title}`);
-  }
+  const result = await collectEvents(range);
+  logCollectedEvents(result, range);
 
   if (options.dryRun) {
     return;
   }
 
-  const result = await uploadEvents(items, range);
-  console.log(`Uploaded ${result.importedEvents ?? items.length} events to ${process.env.PUBLIC_EVENT_IMPORT_URL}.`);
+  const uploadResult = await uploadEvents(result.items, range);
+  logUploadResult(uploadResult.importedEvents ?? result.items.length, process.env.PUBLIC_EVENT_IMPORT_URL);
 }
 
 main().catch((error) => {
